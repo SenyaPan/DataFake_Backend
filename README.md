@@ -10,6 +10,14 @@
 - FastAPI: pip install fastapi[all],
 - все остальные библиотеки, которые PyCharm подчеркнёт красным.
 
+Также надо добавить в файловую систему модели, используемые для работы API, а именно:
+
+- wild_epoch_21.pth в папку `/inference/photo_video/deepfake_model`
+- vec_model.onnx в папку `/preprocessing/photo_video/face_vec`
+- deploy.prototxt и weights.caffemodel в папку `/preprocessing/photo_video/func_img_proc`
+
+К сожалению, гитхаб не позволяет загружать такие тяжелые файлы в репозиторий. За файлами моделей можно обратиться к нашему Великому и ужасному чародею нейронных сетей Витале. Он даст ссылку на диск, где их можно скачать.
+
 Поздравляю, Вы крассавчик!
 
 ## Запуск API
