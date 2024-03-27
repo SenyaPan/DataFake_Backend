@@ -9,3 +9,4 @@
 /preprocessing/photo_video/face_vec/vec_model.onnx
 /preprocessing/photo_video/func_img_proc/weights.caffemodel
 /preprocessing/photo_video/func_img_proc/deploy.prototxt
+/.idea
