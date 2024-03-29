@@ -66,25 +66,40 @@ def analyse_audio(filename: str):
     return {"message": "Sorry, at this moment audio analysis is not available :(", "response": {}}
 
 
-def compare_faces(existing_vec: list, face_path_to_compare: str):
-    ort_sess = ort.InferenceSession('preprocessing/photo_video/face_vec/vec_model.onnx')
+def calculate_features(image_path, model_session):
+    # Загрузка изображения
+    img = Image.open(image_path)
+    img = img.resize((112, 112))
+    # Преобразование изображения в массив данных
+    arr_data = img2arr(img)
+    # Загрузка модели
+    ort_sess = model_session
+    # Получение информации о входах модели
+    input_info = ort_sess.get_inputs()
+    # Подготовка данных для входа модели
+    inputs = {}
+    for inp in input_info:
+        inputs[inp.name] = arr_data  # Преобразование массива данных в формат, понятный модели
+    # Вычисление вектора признаков
+    output = ort_sess.run(None, inputs)[0][0]
+    return output
 
-    input_face = {}
-    for inp in ort_sess.get_inputs():
-        curin = img2arr(Image.open(face_path_to_compare))
-        input_face[inp.name] = curin
 
-    output = ort_sess.run(None, input_face)[0][0]
+def compare_faces(existing_vec: list, face_path_to_compare: str, model_session):
+    output = calculate_features(face_path_to_compare, model_session)
 
     best_id = -1
+    best_vec = []
     best_prob = 0
     for i in range(len(existing_vec)):
         probability = cos_vec(output, existing_vec[i])
+
         if probability > 0.7 and probability > best_prob:
             best_id = i
+            best_vec = existing_vec[i]
             best_prob = probability
 
-    return best_id
+    return best_id, best_vec
 
 
 async def analyse_video(filename: str):
@@ -93,8 +108,11 @@ async def analyse_video(filename: str):
 
     # result_audio = analyse_audio(''.join(filename.split(".")[:-1]) + ".mp3")  # for this moment it doesn't work
 
+    ort_sess = ort.InferenceSession('preprocessing/photo_video/face_vec/vec_model.onnx')
+
     vidcap = cv2.VideoCapture(filename)
     result = {}
+    vecs = []
     frame_num = 0
     while True:
         ret, frame = vidcap.read()  # what type is frame np.array
@@ -103,8 +121,8 @@ async def analyse_video(filename: str):
         faces_paths = cut_faces(filename, frame)  # DONE add an opportunity to upload np.array
 
         if not faces_paths:
-            for i in range(len(result.keys())):
-                result[i].append(0)
+            for face_id in list(result.keys()):
+                result[str(face_id)].append(0)
             continue
 
         data = {"data": faces_paths}
@@ -112,17 +130,22 @@ async def analyse_video(filename: str):
         face_results = await call_photo_inference(data)
 
         if not result.keys():
-            for i in range(len(faces_paths)):
-                result[i] = [face_results["response"][str(i)]]
+            for i, face_path in enumerate(faces_paths):
+                vec = calculate_features(face_path, ort_sess)
+                vecs.append(vec)
+                result[str(i)] = []
+                result[str(i)].append(face_results["response"][str(i)])
             continue
+
         for i, face_path in enumerate(faces_paths):  # write properly
-            face_id = compare_faces(result.keys(), face_path)
+            face_id, face_vec = compare_faces(vecs, face_path, ort_sess)
             if face_id == -1:
-                face_id = len(result.keys())
-                result[face_id] = []
+                vecs.append(face_vec)
+                face_id = len(vecs)
+                result[str(face_id)] = []
                 for _ in range(frame_num):
-                    result[face_id].append(0)
-            result[face_id].append(face_results["response"][str(i)])
+                    result[str(face_id)].append(0)
+            result[str(face_id)].append(face_results["response"][str(i)])
 
         for face_path in faces_paths:
             os.remove(face_path)

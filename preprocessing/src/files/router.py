@@ -73,7 +73,7 @@ async def analyze_file(uploaded_file: UploadFile) -> JSONResponse:
         elif file_format == "audio":
             result = analyse_audio()  # idk what parameters there should be
         elif file_format == "video":
-            result = await analyse_video(destination)  # idk what parameters there should be
+            result = await analyse_video(destination)
 
         json_response = JSONResponse(content=result)
 
