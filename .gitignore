@@ -11,3 +11,6 @@
 /preprocessing/photo_video/func_img_proc/deploy.prototxt
 /.idea/
 __pycache__/
+/inference/photo_video/deepfake_model/wild_epoch_36.pth
+/start.txt
+/preprocessing/media/

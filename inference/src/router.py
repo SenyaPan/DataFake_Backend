@@ -30,7 +30,7 @@ router = APIRouter(
                                                                                          "face analysis")
 async def analyse_photo(data: dict):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model_path = 'inference/photo_video/deepfake_model/wild_epoch_21.pth'
+    model_path = 'inference/photo_video/deepfake_model/wild_epoch_36.pth'
 
     inference = PhotoInference(model_path, device)
 

@@ -35,7 +35,6 @@ def convert_arr(arr, mode):
 
 # Преобразование картинки в np.array размерности [1, 3, 112, 112]
 def img2arr(img):
-    print(img.size)
     x, y = img.size
     data = img.load()
     res = []

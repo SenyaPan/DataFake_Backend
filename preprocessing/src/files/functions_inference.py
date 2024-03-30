@@ -1,10 +1,10 @@
 import cv2
 import os
 import requests
-import zipfile
+import shutil
 import onnxruntime as ort
 
-from moviepy.editor import *
+# from moviepy.editor import *
 
 from PIL import Image
 from fastapi.responses import JSONResponse, FileResponse
@@ -24,6 +24,13 @@ def cut_faces(filename, frame=None):
         face_frames = face_extractor.process_file(frame)
 
     dir_for_save = ''.join(filename.split('/')[-1].split(".")[:-1])
+
+    if not (os.path.isdir('preprocessing/media/' + dir_for_save)):
+        os.mkdir('preprocessing/media/' + dir_for_save)
+
+    if filename.split("/")[-1].split(".")[-1] in ["mp4", "avi", "mov"]:
+        dir_for_save += '/temp'
+
     if not (os.path.isdir('preprocessing/media/' + dir_for_save)):
         os.mkdir('preprocessing/media/' + dir_for_save)
 
@@ -99,6 +106,9 @@ def compare_faces(existing_vec: list, face_path_to_compare: str, model_session):
             best_vec = existing_vec[i]
             best_prob = probability
 
+    if best_id == -1:
+        best_vec = output
+
     return best_id, best_vec
 
 
@@ -115,10 +125,12 @@ async def analyse_video(filename: str):
     vecs = []
     frame_num = 0
     while True:
-        ret, frame = vidcap.read()  # what type is frame np.array
+        ret, frame = vidcap.read()
         if not ret:
             break
-        faces_paths = cut_faces(filename, frame)  # DONE add an opportunity to upload np.array
+        # if frame_num == 122:
+        #     print(frame)
+        faces_paths = cut_faces(filename, frame)
 
         if not faces_paths:
             for face_id in list(result.keys()):
@@ -135,14 +147,19 @@ async def analyse_video(filename: str):
                 vecs.append(vec)
                 result[str(i)] = []
                 result[str(i)].append(face_results["response"][str(i)])
+                print(face_path, ''.join(filename.split(".")[:-1]))
+                shutil.move(face_path, ''.join(filename.split(".")[:-1]))
             continue
-
+        # if frame_num == 84:
+        #     print(face_results["response"])
+        #     print(result.keys(), len(vecs))
         for i, face_path in enumerate(faces_paths):  # write properly
             face_id, face_vec = compare_faces(vecs, face_path, ort_sess)
             if face_id == -1:
-                vecs.append(face_vec)
                 face_id = len(vecs)
+                vecs.append(face_vec)
                 result[str(face_id)] = []
+                shutil.move(face_path, ''.join(filename.split(".")[:-1]))
                 for _ in range(frame_num):
                     result[str(face_id)].append(0)
             result[str(face_id)].append(face_results["response"][str(i)])
@@ -150,5 +167,7 @@ async def analyse_video(filename: str):
         for face_path in faces_paths:
             os.remove(face_path)
         frame_num += 1
-
-    return result  # {"message": "Sorry, at this moment video analysis is not available :(", "response": {}}
+        print(frame_num)
+    os.rmdir(''.join(filename.split('.')[:-1]) + '/temp')
+    right_result = {'message': '', 'response': result, 'dir_path': 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])}
+    return right_result  # {"message": "Sorry, at this moment video analysis is not available :(", "response": {}}

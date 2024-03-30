@@ -1,10 +1,14 @@
 import shutil
 import os
+import time
+
+import matplotlib.pyplot as plt
 
 from fastapi import APIRouter, UploadFile
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+
 from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,7 +57,7 @@ async def analyze_file(uploaded_file: UploadFile) -> JSONResponse:
     Uploads file for future analysis, checks its extension and media type, sends it to the microservice with
     neuron-network inference
     """
-
+    start_time = time.time()
     if check_extension(uploaded_file):  # probably should be done more properly
         destination = f"preprocessing/media/{uploaded_file.filename}"  # create path for temporary save
         try:
@@ -74,10 +78,16 @@ async def analyze_file(uploaded_file: UploadFile) -> JSONResponse:
             result = analyse_audio()  # idk what parameters there should be
         elif file_format == "video":
             result = await analyse_video(destination)
+            for key in result['response'].keys():
+                plt.clf()
+                plt.plot(result['response'][str(key)])
+                plt.savefig(''.join(destination.split('.')[:-1]) + '/' + str(key) + '.png')
 
         json_response = JSONResponse(content=result)
 
         os.remove(destination)
+        end_time = time.time()
+        print(end_time - start_time)
 
         return json_response
     else:

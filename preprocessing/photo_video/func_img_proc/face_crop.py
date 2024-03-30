@@ -32,7 +32,12 @@ class FaceExtractor:
             if confidence > 0.8:
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 (startX, startY, endX, endY) = box.astype('int')
-                face = cv2.cvtColor(image[startY:endY, startX:endX], cv2.COLOR_BGR2RGB)  # convert BGR to RGB
+                # print((startX, startY, endX, endY))
+                try:
+                    face = cv2.cvtColor(image[startY:endY, startX:endX], cv2.COLOR_BGR2RGB)  # convert BGR to RGB
+                except Exception as ex:
+                    print(f"Error", (startX, startY, endX, endY))
+                    print(image)
                 faces.append(face)
 
         return faces  # return the face in RGB format
