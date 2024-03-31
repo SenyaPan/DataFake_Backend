@@ -3,6 +3,8 @@ import os
 import requests
 import shutil
 import onnxruntime as ort
+from tqdm import tqdm
+import magic
 
 # from moviepy.editor import *
 
@@ -12,6 +14,13 @@ from fastapi.responses import JSONResponse, FileResponse
 from preprocessing.photo_video.func_img_proc.face_crop import FaceExtractor
 from preprocessing.photo_video.face_vec.feature_vec import img2arr, cos_vec
 
+def check_file(file_path):
+    mime = magic.Magic(mime=True)
+    file_type = mime.from_file(file_path)
+    if file_type.startswith('image/') or file_type.startswith('audio/') or file_type.startswith('video/'):
+        return True
+    else:
+        return False
 
 def cut_faces(filename, frame=None):
     net = cv2.dnn.readNetFromCaffe('preprocessing/photo_video/func_img_proc/deploy.prototxt',
@@ -111,6 +120,14 @@ def compare_faces(existing_vec: list, face_path_to_compare: str, model_session):
 
     return best_id, best_vec
 
+def get_ort_session(model_path):
+    available_providers = ort.get_available_providers()
+    if 'CUDAExecutionProvider' in available_providers:
+        # GPU is available, use it
+        return ort.InferenceSession(model_path, providers=['CUDAExecutionProvider']), print('Using CUDA')
+    else:
+        # GPU is not available, use CPU
+        return ort.InferenceSession(model_path)
 
 async def analyse_video(filename: str):
     # video = VideoFileClip(filename)
@@ -118,56 +135,68 @@ async def analyse_video(filename: str):
 
     # result_audio = analyse_audio(''.join(filename.split(".")[:-1]) + ".mp3")  # for this moment it doesn't work
 
-    ort_sess = ort.InferenceSession('preprocessing/photo_video/face_vec/vec_model.onnx')
+    model_path = 'preprocessing/photo_video/face_vec/vec_model.onnx'
+    ort_sess = get_ort_session(model_path)
 
+    print("Модель успешно загружена.")
     vidcap = cv2.VideoCapture(filename)
     result = {}
     vecs = []
     frame_num = 0
-    while True:
-        ret, frame = vidcap.read()
-        if not ret:
-            break
-        # if frame_num == 122:
-        #     print(frame)
-        faces_paths = cut_faces(filename, frame)
+    total_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        if not faces_paths:
-            for face_id in list(result.keys()):
-                result[str(face_id)].append(0)
-            continue
+    with tqdm(total=total_frames) as pbar:
+        while True:
+            ret, frame = vidcap.read()
+            if not ret:
+                break
 
-        data = {"data": faces_paths}
+            if frame_num % 4 != 0:
+                frame_num += 1
+                pbar.update(1)
+                continue
 
-        face_results = await call_photo_inference(data)
+            # if frame_num == 122:
+            #     print(frame)
+            faces_paths = cut_faces(filename, frame)
 
-        if not result.keys():
-            for i, face_path in enumerate(faces_paths):
-                vec = calculate_features(face_path, ort_sess)
-                vecs.append(vec)
-                result[str(i)] = []
-                result[str(i)].append(face_results["response"][str(i)])
-                print(face_path, ''.join(filename.split(".")[:-1]))
-                shutil.move(face_path, ''.join(filename.split(".")[:-1]))
-            continue
-        # if frame_num == 84:
-        #     print(face_results["response"])
-        #     print(result.keys(), len(vecs))
-        for i, face_path in enumerate(faces_paths):  # write properly
-            face_id, face_vec = compare_faces(vecs, face_path, ort_sess)
-            if face_id == -1:
-                face_id = len(vecs)
-                vecs.append(face_vec)
-                result[str(face_id)] = []
-                shutil.move(face_path, ''.join(filename.split(".")[:-1]))
-                for _ in range(frame_num):
+            if not faces_paths:
+                for face_id in list(result.keys()):
                     result[str(face_id)].append(0)
-            result[str(face_id)].append(face_results["response"][str(i)])
+                continue
 
-        for face_path in faces_paths:
-            os.remove(face_path)
-        frame_num += 1
-        print(frame_num)
+            data = {"data": faces_paths}
+
+            face_results = await call_photo_inference(data)
+
+            if not result.keys():
+                for i, face_path in enumerate(faces_paths):
+                    vec = calculate_features(face_path, ort_sess)
+                    vecs.append(vec)
+                    result[str(i)] = []
+                    result[str(i)].append(face_results["response"][str(i)])
+                    print(face_path, ''.join(filename.split(".")[:-1]))
+                    shutil.move(face_path, ''.join(filename.split(".")[:-1]))
+                continue
+            # if frame_num == 84:
+            #     print(face_results["response"])
+            #     print(result.keys(), len(vecs))
+            for i, face_path in enumerate(faces_paths):  # write properly
+                face_id, face_vec = compare_faces(vecs, face_path, ort_sess)
+                if face_id == -1:
+                    face_id = len(vecs)
+                    vecs.append(face_vec)
+                    result[str(face_id)] = []
+                    shutil.move(face_path, ''.join(filename.split(".")[:-1]))
+                    for _ in range(frame_num):
+                        result[str(face_id)].append(0)
+                result[str(face_id)].append(face_results["response"][str(i)])
+
+            for face_path in faces_paths:
+                os.remove(face_path)
+            frame_num += 1
+            # print(frame_num)
+            pbar.update(1)
     os.rmdir(''.join(filename.split('.')[:-1]) + '/temp')
     right_result = {'message': '', 'response': result, 'dir_path': 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])}
     return right_result  # {"message": "Sorry, at this moment video analysis is not available :(", "response": {}}
