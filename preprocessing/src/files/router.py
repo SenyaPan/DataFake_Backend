@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # from preprocessing.src.operations.models import operation
 # from preprocessing.src.operations.schemas import OperationCreate
 
-from preprocessing.src.files.functions_preprocess import check_extension, get_file_format, get_hash_md5, check_hash, \
+from preprocessing.src.files.functions_preprocess import check_extension, check_file, get_hash_md5, check_hash, \
     get_result
 
 from preprocessing.src.files.functions_inference import analyse_photo, analyse_audio, analyse_video
@@ -58,37 +58,41 @@ async def analyze_file(uploaded_file: UploadFile) -> JSONResponse:
     neuron-network inference
     """
     start_time = time.time()
-    if check_extension(uploaded_file):  # probably should be done more properly
-        destination = f"preprocessing/media/{uploaded_file.filename}"  # create path for temporary save
-        try:
-            with open(destination, "wb") as buffer:
-                shutil.copyfileobj(uploaded_file.file, buffer)
-        finally:
-            uploaded_file.file.close()
 
-        file_hash = get_hash_md5(destination)
+    destination = f"preprocessing/media/{uploaded_file.filename}"
+    try:
+        with open(destination, "wb") as buffer:
+            shutil.copyfileobj(uploaded_file.file, buffer)
+    finally:
+        uploaded_file.file.close()
 
-        file_format = get_file_format(destination)
-        if check_hash(file_hash):  # TODO check if hash is already in database
-            results = get_result(file_hash)
-            return results
-        elif file_format == "photo":
-            result = await analyse_photo(destination)
-        elif file_format == "audio":
-            result = analyse_audio()  # idk what parameters there should be
-        elif file_format == "video":
-            result = await analyse_video(destination)
-            for key in result['response'].keys():
-                plt.clf()
-                plt.plot(result['response'][str(key)])
-                plt.savefig(''.join(destination.split('.')[:-1]) + '/' + str(key) + '.png')
+    file_hash = get_hash_md5(destination)
+    if check_hash(file_hash):  # TODO check if hash is already in database
+        results = get_result(file_hash)
+        return results
 
-        json_response = JSONResponse(content=result)
-
-        os.remove(destination)
-        end_time = time.time()
-        print(end_time - start_time)
-
-        return json_response
+    if check_file(destination) == "image":
+        result = await analyse_photo(destination)
+        if not result:
+            result = {"status": 250, 'data': {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}, 'dir_path': ''}}
+    elif check_file(destination) == "audio":
+        result = analyse_audio(destination)  # idk what parameters there should be
+    elif check_file(destination) == "video":
+        result = await analyse_video(destination)
+        if not result:
+            result = {"status": 250, 'data': {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}, 'dir_path': ''}}
+        # for key in result['response'].keys():
+        #     plt.clf()
+        #     plt.plot(result['response'][str(key)])
+        #     plt.savefig(''.join(destination.split('.')[:-1]) + '/' + str(key) + '.png')
     else:
-        return {"status": 401, "data": "error: Wrong file format!"}
+        result = {"status": 415, 'data': {'message': 'Error! Wrong file type!', 'response': {}, 'dir_path': ''}}  #
+        # write return of error properly
+
+    json_response = JSONResponse(content=result)
+
+    os.remove(destination)
+    end_time = time.time()
+    print(end_time - start_time)
+
+    return json_response

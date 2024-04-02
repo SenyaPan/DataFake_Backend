@@ -1,18 +1,23 @@
 from fastapi import APIRouter, Depends, UploadFile, Request
 import hashlib
+import magic
 
 
 def check_extension(uploaded_file: UploadFile):
     return uploaded_file.filename.endswith((".jpg", ".jpeg", ".png", ".bmp", ".mp4", ".avi", ".mov"))
 
 
-def get_file_format(file_path: str):
-    if file_path.split("/")[-1].split(".")[-1] in ["jpg", "jpeg", "png", "bmp"]:
-        return "photo"
-    elif file_path.split("/")[-1].split(".")[-1] in ["mp4", "avi", "mov"]:
-        return "video"
-    elif file_path.split("/")[-1].split(".")[-1] in ["mp3"]:  # add audio formats
-        return "audio"
+def check_file(file_path):
+    mime = magic.Magic(mime=True)
+    file_type = mime.from_file(file_path)
+    if file_type.startswith('image/'):
+        return 'image'
+    elif file_type.startswith('audio/'):
+        return 'audio'
+    elif file_type.startswith('video/'):
+        return 'video'
+    else:
+        return False
 
 
 def get_hash_md5(filename: str):

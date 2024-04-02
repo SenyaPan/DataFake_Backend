@@ -14,3 +14,4 @@ __pycache__/
 /inference/photo_video/deepfake_model/wild_epoch_36.pth
 /start.txt
 /preprocessing/media/
+/inference/photo_video/deepfake_model/model_epoch_76.pth

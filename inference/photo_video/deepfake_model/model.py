@@ -3,13 +3,14 @@ import torchvision.transforms as transforms
 import torch.nn.functional as F
 import numpy as np
 from PIL import Image
-from inference.photo_video.deepfake_model.model_arc_2 import CustomConvNet
+# from inference.photo_video.deepfake_model.model_arc_2 import CustomConvNet
+from inference.photo_video.deepfake_model.model_arc_1 import FakeCatcher
 
 
 class PhotoInference:
     def __init__(self, model_path, device):
         self.device = device
-        self.model = CustomConvNet(device)
+        self.model = FakeCatcher(device)
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
         self.model.to(device)
         self.class_names = ['Fake', 'Real']

@@ -1,12 +1,14 @@
 import cv2
 import os
+
+import librosa
 import requests
 import shutil
 import onnxruntime as ort
 from tqdm import tqdm
-import magic
 
-# from moviepy.editor import *
+from moviepy.editor import VideoFileClip
+from matplotlib import pyplot as plt
 
 from PIL import Image
 from fastapi.responses import JSONResponse, FileResponse
@@ -14,13 +16,6 @@ from fastapi.responses import JSONResponse, FileResponse
 from preprocessing.photo_video.func_img_proc.face_crop import FaceExtractor
 from preprocessing.photo_video.face_vec.feature_vec import img2arr, cos_vec
 
-def check_file(file_path):
-    mime = magic.Magic(mime=True)
-    file_type = mime.from_file(file_path)
-    if file_type.startswith('image/') or file_type.startswith('audio/') or file_type.startswith('video/'):
-        return True
-    else:
-        return False
 
 def cut_faces(filename, frame=None):
     net = cv2.dnn.readNetFromCaffe('preprocessing/photo_video/func_img_proc/deploy.prototxt',
@@ -54,7 +49,8 @@ def cut_faces(filename, frame=None):
 
 async def analyse_photo(filename):
     faces_paths = cut_faces(filename)
-    # TODO add a response in case we haven't found faces
+    if not faces_paths:
+        return {}
     data = {"data": faces_paths}
     results = await call_photo_inference(data)
 
@@ -78,7 +74,58 @@ async def call_photo_inference(data):
         return {"message": "Error sending request", "response": {}}
 
 
-def analyse_audio(filename: str):
+async def call_audio_inference(data):
+    url = "http://localhost:5050/api/v1/inference/audio"
+    response = requests.post(url, json=data)
+
+    if response.status_code == 200:
+        return {"message": "File analyzed successfully", "response": response.json()}
+    else:
+        return {"message": "Error sending request", "response": {}}
+
+
+def create_spectrogram(audio, sample_rate, name):
+    plt.interactive(False)
+    fig = plt.figure(figsize=[0.715,0.72])
+    ax = fig.add_subplot(111)
+    ax.axes.get_xaxis().set_visible(False)
+    ax.axes.get_yaxis().set_visible(False)
+    ax.set_frame_on(False)
+    S = librosa.feature.melspectrogram(y=audio, sr=sample_rate)
+    librosa.display.specshow(librosa.power_to_db(S, ref=np.max))
+    filename  = name + '.png'
+    plt.savefig(filename, dpi=405, bbox_inches='tight',pad_inches=0)
+    plt.close()
+    fig.clf()
+    plt.close(fig)
+    plt.close('all')
+    del name,audio,sample_rate,fig,ax,S
+
+
+def analyse_audio(filename: str, sec: int = 1):
+    audio, sr = librosa.load(filename)
+    buffer = sec * sr  # число-количесвто секунд в отрезке
+    samples_total = len(audio)
+    samples_wrote = 0
+    counter = 1
+    list_of_audio = []
+    audio_path = ''.join(filename.split('.')[:-1])
+    audio_result = []
+    for i in range(0, samples_total, buffer):
+
+        if samples_total - buffer < i:
+            create_spectrogram(audio[i:samples_total], sr, audio_path + '0.png')
+        else:
+            create_spectrogram(audio[i:i+buffer], sr, audio_path + '0.png')
+
+        data = {"data": audio_path + '0.png'}
+
+        result = call_audio_inference(data)
+
+        audio_result.append(result)
+
+    right_result = {'message': "File analyzed successfully", 'response': audio_result, 'dir_path': ''}
+
     return {"message": "Sorry, at this moment audio analysis is not available :(", "response": {}}
 
 
@@ -120,6 +167,7 @@ def compare_faces(existing_vec: list, face_path_to_compare: str, model_session):
 
     return best_id, best_vec
 
+
 def get_ort_session(model_path):
     available_providers = ort.get_available_providers()
     if 'CUDAExecutionProvider' in available_providers:
@@ -129,16 +177,27 @@ def get_ort_session(model_path):
         # GPU is not available, use CPU
         return ort.InferenceSession(model_path)
 
+
 async def analyse_video(filename: str):
     # video = VideoFileClip(filename)
     # video.audio.write_audiofile(''.join(filename.split(".")[:-1]) + ".mp3")
 
     # result_audio = analyse_audio(''.join(filename.split(".")[:-1]) + ".mp3")  # for this moment it doesn't work
 
+    # video = VideoFileClip(filename)
+    # audio = video.audio
+    # video.close()
+    #
+    # audio_path = ''.join(filename.split('.')[-1]) + '0.mp3'
+    # audio.write_audiofile(audio_path)
+    # audio.close()
+    #
+    # result_audio = analyse_audio(audio_path)
+
     model_path = 'preprocessing/photo_video/face_vec/vec_model.onnx'
+
     ort_sess = get_ort_session(model_path)
 
-    print("Модель успешно загружена.")
     vidcap = cv2.VideoCapture(filename)
     result = {}
     vecs = []
@@ -174,8 +233,9 @@ async def analyse_video(filename: str):
                     vec = calculate_features(face_path, ort_sess)
                     vecs.append(vec)
                     result[str(i)] = []
+                    # print(face_results)
                     result[str(i)].append(face_results["response"][str(i)])
-                    print(face_path, ''.join(filename.split(".")[:-1]))
+                    # print(face_path, ''.join(filename.split(".")[:-1]))
                     shutil.move(face_path, ''.join(filename.split(".")[:-1]))
                 continue
             # if frame_num == 84:
@@ -192,11 +252,13 @@ async def analyse_video(filename: str):
                         result[str(face_id)].append(0)
                 result[str(face_id)].append(face_results["response"][str(i)])
 
-            for face_path in faces_paths:
-                os.remove(face_path)
+            # for face_path in faces_paths:
+            #     os.remove(face_path)
             frame_num += 1
             # print(frame_num)
             pbar.update(1)
-    os.rmdir(''.join(filename.split('.')[:-1]) + '/temp')
-    right_result = {'message': '', 'response': result, 'dir_path': 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])}
+    shutil.rmtree(''.join(filename.split('.')[:-1]) + '/temp')
+    # os.rmdir()
+    right_result = {'message': "File analyzed successfully", 'response': result, 'dir_path': 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])}
+    # add to the result audio_result
     return right_result  # {"message": "Sorry, at this moment video analysis is not available :(", "response": {}}
