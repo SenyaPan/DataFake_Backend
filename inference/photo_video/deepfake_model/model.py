@@ -32,7 +32,7 @@ class PhotoInference:
             fake_prob = probabilities[0, self.class_names.index('Fake')].item()
             real_prob = probabilities[0, self.class_names.index('Real')].item()
 
-        return fake_prob, real_prob
+        return fake_prob*100
 
 
 # if __name__ == "__main__":

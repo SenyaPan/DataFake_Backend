@@ -39,7 +39,7 @@ async def analyse_photo(data: dict):
     for i, img_path in enumerate(img_paths):
         # prediction_index, predict_name, fake_probability = inference.process_photo(img)
         # result[i] = {'probability': prediction_index, "fake_or_not": predict_name, "fake_probability": fake_probability}
-        fake_prob, real_prob = inference.process_photo(img_path)
+        fake_prob = inference.process_photo(img_path)
         result[i] = fake_prob
 
     return result
