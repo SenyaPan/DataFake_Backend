@@ -1,13 +1,13 @@
 import cv2
 import os
-
 import librosa
 import requests
 import shutil
 import onnxruntime as ort
+import numpy as np
+
 from tqdm import tqdm
 
-from moviepy.editor import VideoFileClip
 from matplotlib import pyplot as plt
 
 from PIL import Image
@@ -32,7 +32,7 @@ def cut_faces(filename, frame=None):
     if not (os.path.isdir('preprocessing/media/' + dir_for_save)):
         os.mkdir('preprocessing/media/' + dir_for_save)
 
-    if filename.split("/")[-1].split(".")[-1] in ["mp4", "avi", "mov"]:
+    if filename.split("/")[-1].split(".")[-1].lower() in ["mp4", "avi", "mov"]:
         dir_for_save += '/temp'
 
     if not (os.path.isdir('preprocessing/media/' + dir_for_save)):
@@ -86,20 +86,20 @@ async def call_audio_inference(data):
 
 def create_spectrogram(audio, sample_rate, name):
     plt.interactive(False)
-    fig = plt.figure(figsize=[0.715,0.72])
+    fig = plt.figure(figsize=[0.715, 0.72])
     ax = fig.add_subplot(111)
     ax.axes.get_xaxis().set_visible(False)
     ax.axes.get_yaxis().set_visible(False)
     ax.set_frame_on(False)
     S = librosa.feature.melspectrogram(y=audio, sr=sample_rate)
     librosa.display.specshow(librosa.power_to_db(S, ref=np.max))
-    filename  = name + '.png'
-    plt.savefig(filename, dpi=405, bbox_inches='tight',pad_inches=0)
+    filename = name + '.png'
+    plt.savefig(filename, dpi=405, bbox_inches='tight', pad_inches=0)
     plt.close()
     fig.clf()
     plt.close(fig)
     plt.close('all')
-    del name,audio,sample_rate,fig,ax,S
+    del name, audio, sample_rate, fig, ax, S
 
 
 def analyse_audio(filename: str, sec: int = 1):
@@ -116,7 +116,7 @@ def analyse_audio(filename: str, sec: int = 1):
         if samples_total - buffer < i:
             create_spectrogram(audio[i:samples_total], sr, audio_path + '0.png')
         else:
-            create_spectrogram(audio[i:i+buffer], sr, audio_path + '0.png')
+            create_spectrogram(audio[i:i + buffer], sr, audio_path + '0.png')
 
         data = {"data": audio_path + '0.png'}
 
@@ -238,27 +238,22 @@ async def analyse_video(filename: str):
                     # print(face_path, ''.join(filename.split(".")[:-1]))
                     shutil.move(face_path, ''.join(filename.split(".")[:-1]))
                 continue
-            # if frame_num == 84:
-            #     print(face_results["response"])
-            #     print(result.keys(), len(vecs))
+
             for i, face_path in enumerate(faces_paths):  # write properly
                 face_id, face_vec = compare_faces(vecs, face_path, ort_sess)
                 if face_id == -1:
                     face_id = len(vecs)
                     vecs.append(face_vec)
                     result[str(face_id)] = []
-                    shutil.move(face_path, ''.join(filename.split(".")[:-1]))
+                    shutil.move(face_path, ''.join(filename.split(".")[:-1]) + f'{face_id}.jpg')
                     for _ in range(frame_num):
                         result[str(face_id)].append(0)
                 result[str(face_id)].append(face_results["response"][str(i)])
 
-            # for face_path in faces_paths:
-            #     os.remove(face_path)
             frame_num += 1
-            # print(frame_num)
             pbar.update(1)
     shutil.rmtree(''.join(filename.split('.')[:-1]) + '/temp')
-    # os.rmdir()
-    right_result = {'message': "File analyzed successfully", 'response': result, 'dir_path': 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])}
+    right_result = {'message': "File analyzed successfully", 'response': result,
+                    'dir_path': 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])}
     # add to the result audio_result
     return right_result  # {"message": "Sorry, at this moment video analysis is not available :(", "response": {}}
