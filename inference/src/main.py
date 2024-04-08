@@ -15,11 +15,12 @@ origins = [
     "http://localhost:5000"
 ]
 
-app.add_middleware(  # i think this block should be rewritten
+app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[
+        "http://localhost:5000"
+    ],
+    allow_methods=["POST"],
 )
 
 app.include_router(router)

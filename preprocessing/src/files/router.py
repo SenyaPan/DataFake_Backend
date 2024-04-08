@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # from preprocessing.src.operations.models import operation
 # from preprocessing.src.operations.schemas import OperationCreate
 
-from preprocessing.src.files.functions_preprocess import check_extension, check_file, get_hash_md5, check_hash, \
+from preprocessing.src.files.functions_preprocess import check_file, get_hash_md5, check_hash, \
     get_result
 
 from preprocessing.src.files.functions_inference import analyse_photo, analyse_audio, analyse_video
@@ -74,24 +74,29 @@ async def analyze_file(uploaded_file: UploadFile) -> JSONResponse:
     if check_file(destination) == "image":
         result = await analyse_photo(destination)
         if not result:
-            result = {"status": 250, 'data': {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}, 'dir_path': ''}}
+            result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}, 'dir_path': ''}
+            json_response = JSONResponse(status_code=250, content=result)
+        else:
+            json_response = JSONResponse(status_code=200, content=result)
     elif check_file(destination) == "audio":
         result = analyse_audio(destination)  # idk what parameters there should be
+        json_response = JSONResponse(content=result)
     elif check_file(destination) == "video":
         result = await analyse_video(destination)
         if not result:
-            result = {"status": 250, 'data': {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}, 'dir_path': ''}}
+            result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}}  # , 'dir_path': ''}
+            json_response = JSONResponse(status_code=250, content=result)
+        else:
+            json_response = JSONResponse(status_code=200, content=result)
         # for key in result['response'].keys():
         #     plt.clf()
         #     plt.plot(result['response'][str(key)])
         #     plt.savefig(''.join(destination.split('.')[:-1]) + '/' + str(key) + '.png')
     else:
-        result = {"status": 415, 'data': {'message': 'Error! Wrong file type!', 'response': {}, 'dir_path': ''}}  #
-        # write return of error properly
+        result = {'data': {'message': 'Error! Wrong file type!', 'response': {}}}  # , 'dir_path': ''}}  #
+        json_response = JSONResponse(status_code=415, content=result)
 
-    json_response = JSONResponse(content=result)
-
-    os.remove(destination)
+    # os.remove(destination)
     end_time = time.time()
     print(end_time - start_time)
 

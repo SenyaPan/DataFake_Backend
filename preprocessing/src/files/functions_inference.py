@@ -10,6 +10,11 @@ from tqdm import tqdm
 
 from matplotlib import pyplot as plt
 
+import torch
+
+from ultralytics import YOLO
+from PIL import Image
+
 from PIL import Image
 from fastapi.responses import JSONResponse, FileResponse
 
@@ -17,33 +22,58 @@ from preprocessing.photo_video.func_img_proc.face_crop import FaceExtractor
 from preprocessing.photo_video.face_vec.feature_vec import img2arr, cos_vec
 
 
-def cut_faces(filename, frame=None):
-    net = cv2.dnn.readNetFromCaffe('preprocessing/photo_video/func_img_proc/deploy.prototxt',
-                                   'preprocessing/photo_video/func_img_proc/weights.caffemodel')
-    face_extractor = FaceExtractor(net)
+# def cut_faces(filename, frame=None):
+#     net = cv2.dnn.readNetFromCaffe('preprocessing/photo_video/func_img_proc/deploy.prototxt',
+#                                    'preprocessing/photo_video/func_img_proc/weights.caffemodel')
+#     face_extractor = FaceExtractor(net)
+#
+#     if frame is None:
+#         face_frames = face_extractor.process_file(filename)
+#     else:
+#         face_frames = face_extractor.process_file(frame)
+#
+#     dir_for_save = ''.join(filename.split('/')[-1].split(".")[:-1])
+#
+#     if not (os.path.isdir('preprocessing/media/' + dir_for_save)):
+#         os.mkdir('preprocessing/media/' + dir_for_save)
+#
+#     if filename.split("/")[-1].split(".")[-1].lower() in ["mp4", "avi", "mov"]:
+#         dir_for_save += '/temp'
+#
+#     if not (os.path.isdir('preprocessing/media/' + dir_for_save)):
+#         os.mkdir('preprocessing/media/' + dir_for_save)
+#
+#     faces_paths = []
+#     for i, frame in enumerate(face_frames):
+#         face = Image.fromarray(frame)
+#         face.save('preprocessing/media/' + dir_for_save + f"/{i}.jpg")
+#         faces_paths.append('preprocessing/media/' + dir_for_save + f"/{i}.jpg")
+#
+#     return faces_paths
 
-    if frame is None:
-        face_frames = face_extractor.process_file(filename)
-    else:
-        face_frames = face_extractor.process_file(frame)
+def cut_faces(filename, frame=None):
+    model_path = 'preprocessing/photo_video/func_img_proc/model.pt'
+    model = YOLO(model_path)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    model.to(device)
+
+    output = model(Image.open(filename))
+
+    boxes = output[0].boxes.xyxy.cpu().numpy()
+    image = Image.open(filename)
 
     dir_for_save = ''.join(filename.split('/')[-1].split(".")[:-1])
 
     if not (os.path.isdir('preprocessing/media/' + dir_for_save)):
         os.mkdir('preprocessing/media/' + dir_for_save)
 
-    if filename.split("/")[-1].split(".")[-1].lower() in ["mp4", "avi", "mov"]:
-        dir_for_save += '/temp'
-
-    if not (os.path.isdir('preprocessing/media/' + dir_for_save)):
-        os.mkdir('preprocessing/media/' + dir_for_save)
-
     faces_paths = []
-    for i, frame in enumerate(face_frames):
-        face = Image.fromarray(frame)
-        face.save('preprocessing/media/' + dir_for_save + f"/{i}.jpg")
+    for i in range(len(boxes)):
+        im = image.crop((boxes[i][0], boxes[i][1], boxes[i][2], boxes[i][3]))
+        im.save('preprocessing/media/' + dir_for_save + f"/{i}.jpg")
         faces_paths.append('preprocessing/media/' + dir_for_save + f"/{i}.jpg")
-
     return faces_paths
 
 
@@ -54,7 +84,7 @@ async def analyse_photo(filename):
     data = {"data": faces_paths}
     results = await call_photo_inference(data)
 
-    results["dir_path"] = 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])
+    #results["dir_path"] = 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])
     # with zipfile.ZipFile('preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1]) + '.zip', 'w',
     #                      zipfile.ZIP_DEFLATED) as zipf:
     #     for root, dirs, files in os.walk('preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])):
@@ -179,6 +209,7 @@ def get_ort_session(model_path):
 
 
 async def analyse_video(filename: str):
+
     # video = VideoFileClip(filename)
     # video.audio.write_audiofile(''.join(filename.split(".")[:-1]) + ".mp3")
 
@@ -215,8 +246,6 @@ async def analyse_video(filename: str):
                 pbar.update(1)
                 continue
 
-            # if frame_num == 122:
-            #     print(frame)
             faces_paths = cut_faces(filename, frame)
 
             if not faces_paths:
@@ -233,9 +262,7 @@ async def analyse_video(filename: str):
                     vec = calculate_features(face_path, ort_sess)
                     vecs.append(vec)
                     result[str(i)] = []
-                    # print(face_results)
                     result[str(i)].append(face_results["response"][str(i)])
-                    # print(face_path, ''.join(filename.split(".")[:-1]))
                     shutil.move(face_path, ''.join(filename.split(".")[:-1]))
                 continue
 
@@ -253,7 +280,7 @@ async def analyse_video(filename: str):
             frame_num += 1
             pbar.update(1)
     shutil.rmtree(''.join(filename.split('.')[:-1]) + '/temp')
-    right_result = {'message': "File analyzed successfully", 'response': result,
-                    'dir_path': 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])}
+    right_result = {'message': "File analyzed successfully", 'response': result}  # ,
+                    # 'dir_path': 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])}
     # add to the result audio_result
     return right_result  # {"message": "Sorry, at this moment video analysis is not available :(", "response": {}}

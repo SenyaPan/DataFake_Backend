@@ -101,6 +101,11 @@ def get_data_from_bin(bin_name):
 #
 # for el in all_inputs:
 #     outputs.append(ort_sess.run(None, el)[0][0])
+# print(type(outputs))
+# print(len(outputs))
+# print(len(outputs[0]))
+# print((outputs[0][0]))
+#
 #
 # depp = outputs[0]
 # not_depp = outputs[1]

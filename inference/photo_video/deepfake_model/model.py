@@ -3,8 +3,10 @@ import torchvision.transforms as transforms
 import torch.nn.functional as F
 import numpy as np
 from PIL import Image
-# from inference.photo_video.deepfake_model.model_arc_2 import CustomConvNet
 from inference.photo_video.deepfake_model.model_arc_1 import FakeCatcher
+# from inference.photo_video.deepfake_model.model_arc_2 import CustomConvNet
+# from inference.photo_video.deepfake_model.model_arc_3 import FakeCatcher
+
 
 
 class PhotoInference:
@@ -24,15 +26,15 @@ class PhotoInference:
             img = Image.open(img)
         elif isinstance(img, np.ndarray):
             img = Image.fromarray(img)
-
         img = self.transform(img).unsqueeze(0).to(self.device)
         with torch.no_grad():
             output = self.model(img)
+
             probabilities = F.softmax(output, dim=1)
             fake_prob = probabilities[0, self.class_names.index('Fake')].item()
             real_prob = probabilities[0, self.class_names.index('Real')].item()
 
-        return round(fake_prob*100, 1)
+        return fake_prob #round(fake_prob*100, 1)
 
 
 # if __name__ == "__main__":

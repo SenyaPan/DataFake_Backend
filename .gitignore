@@ -15,3 +15,6 @@ __pycache__/
 /start.txt
 /preprocessing/media/
 /inference/photo_video/deepfake_model/model_epoch_76.pth
+/inference/photo_video/deepfake_model/model_v3_6.pt
+/trash.py
+/preprocessing/photo_video/func_img_proc/model.pt
