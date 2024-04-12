@@ -18,7 +18,7 @@ from PIL import Image
 from PIL import Image
 from fastapi.responses import JSONResponse, FileResponse
 
-from preprocessing.photo_video.func_img_proc.face_crop import FaceExtractor
+from preprocessing.photo_video.func_img_proc.face_crop_2 import FaceExtractor
 from preprocessing.photo_video.face_vec.feature_vec import img2arr, cos_vec
 
 
@@ -59,9 +59,9 @@ def cut_faces(filename, frame=None):
 
     model.to(device)
 
-    output = model(Image.open(filename))
+    face_extractor = FaceExtractor(model)
+    boxes = face_extractor.process_file(filename)
 
-    boxes = output[0].boxes.xyxy.cpu().numpy()
     image = Image.open(filename)
 
     dir_for_save = ''.join(filename.split('/')[-1].split(".")[:-1])
@@ -79,10 +79,14 @@ def cut_faces(filename, frame=None):
 
 async def analyse_photo(filename):
     faces_paths = cut_faces(filename)
-    if not faces_paths:
-        return {}
-    data = {"data": faces_paths}
-    results = await call_photo_inference(data)
+
+    # if not faces_paths:
+    #     return {}
+
+    results = {}
+    for i, face_path in enumerate(faces_paths):
+        with open(face_path, "rb") as f:
+            results[i] = await call_photo_inference(f)
 
     #results["dir_path"] = 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])
     # with zipfile.ZipFile('preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1]) + '.zip', 'w',
@@ -90,18 +94,19 @@ async def analyse_photo(filename):
     #     for root, dirs, files in os.walk('preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])):
     #         for file in files:
     #             zipf.write(os.path.join(root, file))
+    response = {'message': 'File analyzed successfully', 'response': results}
 
-    return results
+    return response
 
 
-async def call_photo_inference(data):
+async def call_photo_inference(file):
     url = "http://localhost:5050/api/v1/inference/photo"
-    response = requests.post(url, json=data)
+    response = requests.post(url, files={'uploaded_file': file})
 
     if response.status_code == 200:
-        return {"message": "File analyzed successfully", "response": response.json()}
+        return response.json()
     else:
-        return {"message": "Error sending request", "response": {}}
+        return {"message": "Error sending request"}
 
 
 async def call_audio_inference(data):

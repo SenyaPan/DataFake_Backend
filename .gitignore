@@ -18,3 +18,4 @@ __pycache__/
 /inference/photo_video/deepfake_model/model_v3_6.pt
 /trash.py
 /preprocessing/photo_video/func_img_proc/model.pt
+/inference/photo_video/deepfake_model/model_v3_15.pt

@@ -3,10 +3,6 @@ import hashlib
 import magic
 
 
-def check_extension(uploaded_file: UploadFile):
-    return uploaded_file.filename.endswith((".jpg", ".jpeg", ".png", ".bmp", ".mp4", ".avi", ".mov"))
-
-
 def check_file(file_path):
     mime = magic.Magic(mime=True)
     file_type = mime.from_file(file_path)

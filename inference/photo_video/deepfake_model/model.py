@@ -1,3 +1,7 @@
+from io import BytesIO
+from base64 import b64decode as dec64
+
+
 import torch
 import torchvision.transforms as transforms
 import torch.nn.functional as F
@@ -6,7 +10,6 @@ from PIL import Image
 from inference.photo_video.deepfake_model.model_arc_1 import FakeCatcher
 # from inference.photo_video.deepfake_model.model_arc_2 import CustomConvNet
 # from inference.photo_video.deepfake_model.model_arc_3 import FakeCatcher
-
 
 
 class PhotoInference:
@@ -22,11 +25,10 @@ class PhotoInference:
         ])
 
     def process_photo(self, img):
-        if isinstance(img, str):
-            img = Image.open(img)
-        elif isinstance(img, np.ndarray):
-            img = Image.fromarray(img)
+        img = Image.open(img.file)
+
         img = self.transform(img).unsqueeze(0).to(self.device)
+
         with torch.no_grad():
             output = self.model(img)
 
