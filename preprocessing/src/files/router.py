@@ -1,6 +1,7 @@
 import shutil
 import os
 import time
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 
@@ -8,6 +9,7 @@ from fastapi import APIRouter, UploadFile
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+from typing import Union
 
 from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,14 +54,16 @@ class Result(BaseModel):
 @router.post("/analyze", response_model=Result, summary="Upload and analyze file", response_description="JSON with "
                                                                                                         "results of "
                                                                                                         "analysis")
-async def analyze_file(uploaded_file: UploadFile) -> JSONResponse:
+async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = None, return_path: bool = False) -> JSONResponse:
     """
     Uploads file for future analysis, checks its extension and media type, sends it to the microservice with
     neuron-network inference
     """
     start_time = time.time()
-
-    destination = f"preprocessing/media/{uploaded_file.filename}"
+    file_path = f'received_{str(datetime.now().strftime("%y%m%d_%H%M%S"))}.jpg'
+    destination = 'preprocessing/media/' + file_path
+    if not os.path.isdir('preprocessing/media/'):
+        os.mkdir('preprocessing/media/')
     try:
         with open(destination, "wb") as buffer:
             shutil.copyfileobj(uploaded_file.file, buffer)
@@ -72,11 +76,13 @@ async def analyze_file(uploaded_file: UploadFile) -> JSONResponse:
         return results
 
     if check_file(destination) == "image":
-        result = await analyse_photo(destination)
+        result = await analyse_photo(destination, model_num)
         if not result:
-            result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}, 'dir_path': ''}
+            result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}}
             json_response = JSONResponse(status_code=250, content=result)
         else:
+            if return_path:
+                result['path'] = file_path
             json_response = JSONResponse(status_code=200, content=result)
     elif check_file(destination) == "audio":
         result = analyse_audio(destination)  # idk what parameters there should be
@@ -87,6 +93,8 @@ async def analyze_file(uploaded_file: UploadFile) -> JSONResponse:
             result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}}  # , 'dir_path': ''}
             json_response = JSONResponse(status_code=250, content=result)
         else:
+            if return_path:
+                result['path'] = file_path
             json_response = JSONResponse(status_code=200, content=result)
         # for key in result['response'].keys():
         #     plt.clf()
@@ -101,3 +109,8 @@ async def analyze_file(uploaded_file: UploadFile) -> JSONResponse:
     print(end_time - start_time)
 
     return json_response
+
+
+@router.get('/{dir_name}/{file_name}')
+async def get_file(dir_name: str, file_name: str):
+    return FileResponse(f'preprocessing/media/{dir_name}/{file_name}')

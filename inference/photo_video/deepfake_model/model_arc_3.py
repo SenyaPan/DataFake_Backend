@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class FakeCatcher(nn.Module):
+class FakeCatcher3(nn.Module):
     def __init__(self, device):
-        super(FakeCatcher, self).__init__()
+        super(FakeCatcher3, self).__init__()
         self.device = device
 
         self.conv_to_vector1 = nn.Sequential(

@@ -7,6 +7,7 @@ import onnxruntime as ort
 import numpy as np
 
 from tqdm import tqdm
+from typing import Union
 
 from matplotlib import pyplot as plt
 
@@ -77,7 +78,7 @@ def cut_faces(filename, frame=None):
     return faces_paths
 
 
-async def analyse_photo(filename):
+async def analyse_photo(filename, model_num: Union[int, None]):
     faces_paths = cut_faces(filename)
 
     # if not faces_paths:
@@ -86,7 +87,7 @@ async def analyse_photo(filename):
     results = {}
     for i, face_path in enumerate(faces_paths):
         with open(face_path, "rb") as f:
-            results[i] = await call_photo_inference(f)
+            results[i] = await call_photo_inference(f, model_num)
 
     #results["dir_path"] = 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])
     # with zipfile.ZipFile('preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1]) + '.zip', 'w',
@@ -99,8 +100,11 @@ async def analyse_photo(filename):
     return response
 
 
-async def call_photo_inference(file):
-    url = "http://localhost:5050/api/v1/inference/photo"
+async def call_photo_inference(file, model_num: Union[int, None]):
+    if model_num is None:
+        url = "http://localhost:5050/api/v1/inference/photo"
+    else:
+        url = f"http://localhost:5050/api/v1/inference/photo?model_num={model_num}"
     response = requests.post(url, files={'uploaded_file': file})
 
     if response.status_code == 200:

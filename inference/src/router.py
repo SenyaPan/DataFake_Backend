@@ -3,6 +3,7 @@ from io import BytesIO
 import torch
 
 from fastapi import APIRouter, UploadFile
+from typing import Union
 from pydantic import BaseModel
 from typing import List
 from PIL import Image
@@ -31,11 +32,19 @@ router = APIRouter(
 
 @router.post("/photo", summary="Analyze faces", response_description="JSON with results of every "
                                                                                          "face analysis")
-async def analyse_photo(uploaded_file: UploadFile):
+async def analyse_photo(uploaded_file: UploadFile, model_num: Union[int, None] = None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model_path = 'inference/photo_video/deepfake_model/model_epoch_76.pth'
-
-    inference = PhotoInference(model_path, device)
+    if model_num == 1:
+        model_path = 'inference/photo_video/deepfake_model/model_epoch_76.pth'
+    elif model_num == 2:
+        model_path = 'inference/photo_video/deepfake_model/wild_epoch_21.pth'
+    elif model_num == 3:
+        model_path = 'inference/photo_video/deepfake_model/model_v3_15.pt'
+    elif model_num == 4:
+        model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.1_1.pt'
+    else:
+        model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.1_1.pt'
+    inference = PhotoInference(model_path, model_num if model_num else 4, device)
 
     fake_prob = inference.process_photo(uploaded_file)
 
