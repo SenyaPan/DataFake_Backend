@@ -3,6 +3,7 @@ import os
 import librosa
 import requests
 import shutil
+import time
 import onnxruntime as ort
 import numpy as np
 
@@ -59,16 +60,23 @@ def cut_faces(filename, frame=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model.to(device)
-
     face_extractor = FaceExtractor(model)
-    boxes = face_extractor.process_file(filename)
-
-    image = Image.open(filename)
 
     dir_for_save = ''.join(filename.split('/')[-1].split(".")[:-1])
 
     if not (os.path.isdir('preprocessing/media/' + dir_for_save)):
         os.mkdir('preprocessing/media/' + dir_for_save)
+
+    if frame is not None:
+        boxes = face_extractor.process_file(frame)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image = Image.fromarray(frame)
+        dir_for_save += "/temp"
+        if not os.path.isdir('preprocessing/media/' + dir_for_save):
+            os.mkdir('preprocessing/media/' + dir_for_save)
+    else:
+        boxes = face_extractor.process_file(filename)
+        image = Image.open(filename)
 
     faces_paths = []
     for i in range(len(boxes)):
@@ -80,9 +88,6 @@ def cut_faces(filename, frame=None):
 
 async def analyse_photo(filename, model_num: Union[int, None]):
     faces_paths = cut_faces(filename)
-
-    # if not faces_paths:
-    #     return {}
 
     results = {}
     for i, face_path in enumerate(faces_paths):
@@ -217,7 +222,7 @@ def get_ort_session(model_path):
         return ort.InferenceSession(model_path)
 
 
-async def analyse_video(filename: str):
+async def analyse_video(filename: str, model_num: Union[int, None]):
 
     # video = VideoFileClip(filename)
     # video.audio.write_audiofile(''.join(filename.split(".")[:-1]) + ".mp3")
@@ -247,6 +252,7 @@ async def analyse_video(filename: str):
     with tqdm(total=total_frames) as pbar:
         while True:
             ret, frame = vidcap.read()
+
             if not ret:
                 break
 
@@ -254,38 +260,52 @@ async def analyse_video(filename: str):
                 frame_num += 1
                 pbar.update(1)
                 continue
-
+            # start_time = time.time()
             faces_paths = cut_faces(filename, frame)
+            # end_time = time.time()
+            # print("Cut faces time is ", end_time - start_time)
 
             if not faces_paths:
                 for face_id in list(result.keys()):
-                    result[str(face_id)].append(0)
+                    result[str(face_id)].append(None)
                 continue
 
-            data = {"data": faces_paths}
-
-            face_results = await call_photo_inference(data)
+            model_results = {}
+            for i, face_path in enumerate(faces_paths):
+                with open(face_path, "rb") as f:
+                    model_results[i] = await call_photo_inference(f, model_num)
 
             if not result.keys():
                 for i, face_path in enumerate(faces_paths):
+                    # start_time = time.time()
                     vec = calculate_features(face_path, ort_sess)
+                    # end_time = time.time()
+                    # print("Count faces vecs time is ", end_time - start_time)
                     vecs.append(vec)
                     result[str(i)] = []
-                    result[str(i)].append(face_results["response"][str(i)])
+                    result[str(i)].append(model_results[i])
                     shutil.move(face_path, ''.join(filename.split(".")[:-1]))
                 continue
 
+            found_face_id = []
             for i, face_path in enumerate(faces_paths):  # write properly
+                # start_time = time.time()
                 face_id, face_vec = compare_faces(vecs, face_path, ort_sess)
+                # end_time = time.time()
+                # print("Compare faces time is ", end_time - start_time)
                 if face_id == -1:
                     face_id = len(vecs)
                     vecs.append(face_vec)
                     result[str(face_id)] = []
                     shutil.move(face_path, ''.join(filename.split(".")[:-1]) + f'{face_id}.jpg')
                     for _ in range(frame_num):
-                        result[str(face_id)].append(0)
-                result[str(face_id)].append(face_results["response"][str(i)])
-
+                        result[str(face_id)].append(None)
+                found_face_id.append(str(face_id))
+                result[str(face_id)].append(model_results[i])
+            if set(found_face_id) != set(result.keys()):
+                for face_id in list(result.keys()):
+                    if face_id not in set(found_face_id):
+                        result[face_id].append(None)
             frame_num += 1
             pbar.update(1)
     shutil.rmtree(''.join(filename.split('.')[:-1]) + '/temp')

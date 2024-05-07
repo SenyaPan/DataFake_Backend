@@ -175,5 +175,5 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
 
-def ResNet18(img_channel=3, num_classes=2):
-    return ResNet(Block, [2, 2, 2, 2], img_channel, num_classes)
+def ResNet18(arr, img_channel=3, num_classes=2):
+    return ResNet(Block, arr, img_channel, num_classes)

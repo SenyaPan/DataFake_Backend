@@ -54,13 +54,13 @@ class Result(BaseModel):
 @router.post("/analyze", response_model=Result, summary="Upload and analyze file", response_description="JSON with "
                                                                                                         "results of "
                                                                                                         "analysis")
-async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = None, return_path: bool = False) -> JSONResponse:
+async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = None, return_path: bool = False):
     """
     Uploads file for future analysis, checks its extension and media type, sends it to the microservice with
     neuron-network inference
     """
     start_time = time.time()
-    file_path = f'received_{str(datetime.now().strftime("%y%m%d_%H%M%S"))}.jpg'
+    file_path = f'received_{str(datetime.now().strftime("%y%m%d_%H%M%S"))}.{uploaded_file.filename.split(".")[-1]}'
     destination = 'preprocessing/media/' + file_path
     if not os.path.isdir('preprocessing/media/'):
         os.mkdir('preprocessing/media/')
@@ -88,7 +88,7 @@ async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = 
         result = analyse_audio(destination)  # idk what parameters there should be
         json_response = JSONResponse(content=result)
     elif check_file(destination) == "video":
-        result = await analyse_video(destination)
+        result = await analyse_video(destination, model_num)
         if not result:
             result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}}  # , 'dir_path': ''}
             json_response = JSONResponse(status_code=250, content=result)

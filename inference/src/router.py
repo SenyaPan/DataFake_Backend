@@ -42,6 +42,8 @@ async def analyse_photo(uploaded_file: UploadFile, model_num: Union[int, None] =
         model_path = 'inference/photo_video/deepfake_model/model_v3_15.pt'
     elif model_num == 4:
         model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.1_1.pt'
+    elif model_num == 5:
+        model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.2_5.pt'
     else:
         model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.1_1.pt'
     inference = PhotoInference(model_path, model_num if model_num else 4, device)

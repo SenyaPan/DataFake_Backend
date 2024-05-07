@@ -24,7 +24,10 @@ class PhotoInference:
         elif model_arc == 3:
             self.model = FakeCatcher3(device)
         elif model_arc == 4:
-            self.model = ResNet18()
+            self.model = ResNet18(arr=[2, 2, 2, 2])
+            self.model.to(device)
+        elif model_arc == 5:
+            self.model = ResNet18(arr=[2, 3, 2, 1])
             self.model.to(device)
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
         self.model.to(device)
