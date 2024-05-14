@@ -23,3 +23,8 @@ __pycache__/
 /inference/photo_video/deepfake_model/resnet_detfake_v1.1_1.pt
 /inference/photo_video/deepfake_model/resnet_detfake_v1.2_5.pt
 /inference/photo_video/deepfake_model/resnet_detfake_v1.3_3.pt
+/inference/.idea/
+/preprocessing/photo_video/face_vec/vec_model.zip
+/preprocessing/photo_video/func_img_proc/models2.zip
+/inference/photo_video/deepfake_model/models.zip
+/inference/photo_video/deepfake_model/.idea/

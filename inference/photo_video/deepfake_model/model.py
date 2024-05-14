@@ -13,6 +13,9 @@ from inference.photo_video.deepfake_model.model_arc_2 import CustomConvNet
 from inference.photo_video.deepfake_model.model_arc_3 import FakeCatcher3
 from inference.photo_video.deepfake_model.model_arc_4 import ResNet18
 
+from inference.photo_video.deepfake_model.model_arc_5 import ParallelResNet
+from inference.photo_video.deepfake_model.model_arc_5 import block
+
 
 class PhotoInference:
     def __init__(self, model_path, model_arc, device):
@@ -29,6 +32,8 @@ class PhotoInference:
         elif model_arc == 5:
             self.model = ResNet18(arr=[2, 3, 2, 1])
             self.model.to(device)
+        elif model_arc == 6:
+            self.model = ParallelResNet(block=block, layers=[2, 1, 1, 1], num_classes=2, device=device)
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
         self.model.to(device)
         self.class_names = ['Fake', 'Real']

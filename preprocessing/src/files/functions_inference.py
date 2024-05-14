@@ -297,7 +297,7 @@ async def analyse_video(filename: str, model_num: Union[int, None]):
                     face_id = len(vecs)
                     vecs.append(face_vec)
                     result[str(face_id)] = []
-                    shutil.move(face_path, ''.join(filename.split(".")[:-1]) + f'{face_id}.jpg')
+                    shutil.move(face_path, ''.join(filename.split(".")[:-1]) + f'/{face_id}.jpg')
                     for _ in range(frame_num):
                         result[str(face_id)].append(None)
                 found_face_id.append(str(face_id))
