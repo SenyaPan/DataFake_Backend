@@ -1,11 +1,6 @@
-from io import BytesIO
-from base64 import b64decode as dec64
-
-
 import torch
 import torchvision.transforms as transforms
 import torch.nn.functional as F
-import numpy as np
 from PIL import Image
 
 from inference.photo_video.deepfake_model.model_arc_1 import FakeCatcher1
@@ -33,7 +28,14 @@ class PhotoInference:
             self.model = ResNet18(arr=[2, 3, 2, 1])
             self.model.to(device)
         elif model_arc == 6:
-            self.model = ParallelResNet(block=block, layers=[2, 1, 1, 1], num_classes=2, device=device)
+            self.model = ResNet18(arr=[1, 3, 2, 1])
+            self.model.to(device)
+        elif model_arc == 7:
+            self.model = ResNet18(arr=[2, 3, 2, 1])
+            self.model.to(device)
+        elif model_arc == 8:
+            self.model = ParallelResNet(block=block, layers=[4, 3, 2, 1], layers_fft=[3, 2, 1, 1], num_classes=2, device = device)
+            self.model.to(device)
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
         self.model.to(device)
         self.class_names = ['Fake', 'Real']
@@ -54,7 +56,7 @@ class PhotoInference:
             fake_prob = probabilities[0, self.class_names.index('Fake')].item()
             real_prob = probabilities[0, self.class_names.index('Real')].item()
 
-        return fake_prob #round(fake_prob*100, 1)
+        return fake_prob # round(fake_prob*100, 1)
 
 
 # if __name__ == "__main__":
@@ -69,7 +71,7 @@ class PhotoInference:
 #     print(prediction_index, predict_name)
 
 
-#для тестов
+# для тестов
 '''
 for filename in tqdm(os.listdir(photo_dir)):
     if filename.endswith('.jpg') or filename.endswith('.png'):

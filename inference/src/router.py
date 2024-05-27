@@ -45,10 +45,14 @@ async def analyse_photo(uploaded_file: UploadFile, model_num: Union[int, None] =
     elif model_num == 5:
         model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.2_5.pt'
     elif model_num == 6:
-        model_path = 'inference/photo_video/deepfake_model/resnet_model_split.pth'
+        model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.2_1.pt'
+    elif model_num == 7:
+        model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.3_3.pt'
+    elif model_num == 8:
+        model_path = 'inference/photo_video/deepfake_model/resnet_focal_loss_v2.2_1.pth'
     else:
-        model_path = 'inference/photo_video/deepfake_model/resnet_model_split.pth'
-    inference = PhotoInference(model_path, model_num if model_num else 4, device)
+        model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.2_5.pt'
+    inference = PhotoInference(model_path, model_num if model_num else 5, device)
 
     fake_prob = inference.process_photo(uploaded_file)
 

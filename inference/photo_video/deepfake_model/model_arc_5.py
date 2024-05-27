@@ -144,12 +144,12 @@ class ResNet(nn.Module):
 
 
 class ParallelResNet(nn.Module):
-    def __init__(self, block, layers, num_classes, device=device):
+    def __init__(self, block, layers, layers_fft, num_classes, device=device):
         super(ParallelResNet, self).__init__()
         self.device = device
 
         self.resnet_filt = ResNet(block, layers, 3)
-        self.resnet_fft = ResNet(block, layers, 1)
+        self.resnet_fft = ResNet(block, layers_fft, 1)
 
         self.fc_combined = nn.Linear(2048, num_classes)
 
@@ -206,7 +206,6 @@ class ParallelResNet(nn.Module):
         final_out = self.fc_combined(combined_out)
         return final_out
 
-
-model = ParallelResNet(block=block,
-                       layers=[2, 1, 1, 1],
-                       num_classes=2, device=device)
+# model = ParallelResNet(block=block,
+#                        layers=[2, 1, 1, 1],
+#                        num_classes=2, device=device)

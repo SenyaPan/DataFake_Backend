@@ -1,6 +1,5 @@
 import cv2
 import os
-import librosa
 import requests
 import shutil
 import time
@@ -10,15 +9,11 @@ import numpy as np
 from tqdm import tqdm
 from typing import Union
 
-from matplotlib import pyplot as plt
-
 import torch
 
 from ultralytics import YOLO
-from PIL import Image
 
 from PIL import Image
-from fastapi.responses import JSONResponse, FileResponse
 
 from preprocessing.photo_video.func_img_proc.face_crop_2 import FaceExtractor
 from preprocessing.photo_video.face_vec.feature_vec import img2arr, cos_vec
@@ -94,7 +89,7 @@ async def analyse_photo(filename, model_num: Union[int, None]):
         with open(face_path, "rb") as f:
             results[i] = await call_photo_inference(f, model_num)
 
-    #results["dir_path"] = 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])
+    # results["dir_path"] = 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])
     # with zipfile.ZipFile('preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1]) + '.zip', 'w',
     #                      zipfile.ZIP_DEFLATED) as zipf:
     #     for root, dirs, files in os.walk('preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])):
@@ -128,47 +123,7 @@ async def call_audio_inference(data):
         return {"message": "Error sending request", "response": {}}
 
 
-def create_spectrogram(audio, sample_rate, name):
-    plt.interactive(False)
-    fig = plt.figure(figsize=[0.715, 0.72])
-    ax = fig.add_subplot(111)
-    ax.axes.get_xaxis().set_visible(False)
-    ax.axes.get_yaxis().set_visible(False)
-    ax.set_frame_on(False)
-    S = librosa.feature.melspectrogram(y=audio, sr=sample_rate)
-    librosa.display.specshow(librosa.power_to_db(S, ref=np.max))
-    filename = name + '.png'
-    plt.savefig(filename, dpi=405, bbox_inches='tight', pad_inches=0)
-    plt.close()
-    fig.clf()
-    plt.close(fig)
-    plt.close('all')
-    del name, audio, sample_rate, fig, ax, S
-
-
 def analyse_audio(filename: str, sec: int = 1):
-    audio, sr = librosa.load(filename)
-    buffer = sec * sr  # число-количесвто секунд в отрезке
-    samples_total = len(audio)
-    samples_wrote = 0
-    counter = 1
-    list_of_audio = []
-    audio_path = ''.join(filename.split('.')[:-1])
-    audio_result = []
-    for i in range(0, samples_total, buffer):
-
-        if samples_total - buffer < i:
-            create_spectrogram(audio[i:samples_total], sr, audio_path + '0.png')
-        else:
-            create_spectrogram(audio[i:i + buffer], sr, audio_path + '0.png')
-
-        data = {"data": audio_path + '0.png'}
-
-        result = call_audio_inference(data)
-
-        audio_result.append(result)
-
-    right_result = {'message': "File analyzed successfully", 'response': audio_result, 'dir_path': ''}
 
     return {"message": "Sorry, at this moment audio analysis is not available :(", "response": {}}
 

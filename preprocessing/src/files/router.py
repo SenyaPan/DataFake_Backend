@@ -3,20 +3,11 @@ import os
 import time
 from datetime import datetime
 
-import matplotlib.pyplot as plt
-
 from fastapi import APIRouter, UploadFile
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Union
-
-from sqlalchemy import select, insert
-from sqlalchemy.ext.asyncio import AsyncSession
-
-# from preprocessing.src.database import get_async_session
-# from preprocessing.src.operations.models import operation
-# from preprocessing.src.operations.schemas import OperationCreate
 
 from preprocessing.src.files.functions_preprocess import check_file, get_hash_md5, check_hash, \
     get_result
