@@ -80,7 +80,7 @@ async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = 
         json_response = JSONResponse(content=result)
     elif check_file(destination) == "video":
         result = await analyse_video(destination, model_num)
-        if not result:
+        if not result['response']:
             result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}}  # , 'dir_path': ''}
             json_response = JSONResponse(status_code=250, content=result)
         else:
@@ -104,4 +104,7 @@ async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = 
 
 @router.get('/{dir_name}/{file_name}')
 async def get_file(dir_name: str, file_name: str):
-    return FileResponse(f'preprocessing/media/{dir_name}/{file_name}')
+    if os.path.isfile(f'preprocessing/media/{dir_name}/{file_name}'):
+        return FileResponse(f'preprocessing/media/{dir_name}/{file_name}')
+    else:
+        return Response(status_code=404)

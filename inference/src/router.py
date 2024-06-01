@@ -35,32 +35,25 @@ router = APIRouter(
 async def analyse_photo(uploaded_file: UploadFile, model_num: Union[int, None] = None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if model_num == 1:
-        model_path = 'inference/photo_video/deepfake_model/model_epoch_76.pth'
-    elif model_num == 2:
-        model_path = 'inference/photo_video/deepfake_model/wild_epoch_21.pth'
-    elif model_num == 3:
-        model_path = 'inference/photo_video/deepfake_model/model_v3_15.pt'
-    elif model_num == 4:
-        model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.1_1.pt'
+        model_path = 'inference/photo_video/deepfake_model/resnet_focal_loss_v2.3_19.pth'
     elif model_num == 5:
         model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.2_5.pt'
-    elif model_num == 6:
-        model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.2_1.pt'
-    elif model_num == 7:
-        model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.3_3.pt'
     elif model_num == 8:
         model_path = 'inference/photo_video/deepfake_model/resnet_focal_loss_v2.2_1.pth'
     else:
         model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.2_5.pt'
     inference = PhotoInference(model_path, model_num if model_num else 5, device)
 
-    fake_prob = inference.process_photo(uploaded_file)
+    if model_num == 1:
+        fake_prob = inference.process_photo_without_photo_preprocessing(uploaded_file)
+    else:
+        fake_prob = inference.process_photo(uploaded_file)
 
     return fake_prob
 
 
-@router.post("/audio")
-async def analyse_photo(data: dict):  # maybe we need just path
-    audio_path = data["data"]
-
-    return {"status": 200, "data": "Sorry, we do not process audio at the moment."}
+# @router.post("/audio")
+# async def analyse_photo(data: dict):  # maybe we need just path
+#     audio_path = data["data"]
+#
+#     return {"status": 200, "data": "Sorry, we do not process audio at the moment."}

@@ -28,3 +28,6 @@ __pycache__/
 /preprocessing/photo_video/func_img_proc/models2.zip
 /inference/photo_video/deepfake_model/models.zip
 /inference/photo_video/deepfake_model/.idea/
+/inference/photo_video/deepfake_model/resnet_focal_loss_v2.1_1.pth
+/inference/photo_video/deepfake_model/resnet_focal_loss_v2.2_1.pth
+/inference/photo_video/deepfake_model/resnet_focal_loss_v2.3_19.pth

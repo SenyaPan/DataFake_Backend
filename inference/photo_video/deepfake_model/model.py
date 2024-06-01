@@ -3,39 +3,27 @@ import torchvision.transforms as transforms
 import torch.nn.functional as F
 from PIL import Image
 
-from inference.photo_video.deepfake_model.model_arc_1 import FakeCatcher1
-from inference.photo_video.deepfake_model.model_arc_2 import CustomConvNet
-from inference.photo_video.deepfake_model.model_arc_3 import FakeCatcher3
+from inference.photo_video.deepfake_model.functions_for_model_arc_6 import noise_proc, fft_proc
 from inference.photo_video.deepfake_model.model_arc_4 import ResNet18
 
 from inference.photo_video.deepfake_model.model_arc_5 import ParallelResNet
 from inference.photo_video.deepfake_model.model_arc_5 import block
 
+from inference.photo_video.deepfake_model.model_arc_6 import ParallelResNet as ParallelResNet2
+from inference.photo_video.deepfake_model.model_arc_6 import Block
+
 
 class PhotoInference:
     def __init__(self, model_path, model_arc, device):
         self.device = device
-        if model_arc == 1:
-            self.model = FakeCatcher1(device)
-        elif model_arc == 2:
-            self.model = CustomConvNet(device)
-        elif model_arc == 3:
-            self.model = FakeCatcher3(device)
-        elif model_arc == 4:
-            self.model = ResNet18(arr=[2, 2, 2, 2])
-            self.model.to(device)
-        elif model_arc == 5:
+        if model_arc == 5:
             self.model = ResNet18(arr=[2, 3, 2, 1])
-            self.model.to(device)
-        elif model_arc == 6:
-            self.model = ResNet18(arr=[1, 3, 2, 1])
-            self.model.to(device)
-        elif model_arc == 7:
-            self.model = ResNet18(arr=[2, 3, 2, 1])
-            self.model.to(device)
         elif model_arc == 8:
-            self.model = ParallelResNet(block=block, layers=[4, 3, 2, 1], layers_fft=[3, 2, 1, 1], num_classes=2, device = device)
-            self.model.to(device)
+            self.model = ParallelResNet(block=block, layers=[4, 3, 2, 1], layers_fft=[3, 2, 1, 1], num_classes=2,
+                                        device=device)
+        elif model_arc == 1:
+            self.model = ParallelResNet2(block=Block, layers=[2, 3, 2, 1], layers_fft=[2, 1, 1, 1], num_classes=2,
+                                         device=device)
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
         self.model.to(device)
         self.class_names = ['Fake', 'Real']
@@ -56,7 +44,21 @@ class PhotoInference:
             fake_prob = probabilities[0, self.class_names.index('Fake')].item()
             real_prob = probabilities[0, self.class_names.index('Real')].item()
 
-        return fake_prob # round(fake_prob*100, 1)
+        return fake_prob  # round(fake_prob*100, 1)
+
+    def process_photo_without_photo_preprocessing(self, img):
+        img = Image.open(img.file)
+
+        noise_an = noise_proc(img).unsqueeze(0).to(self.device)
+        fft_an = fft_proc(img).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            output = self.model(fft_an, noise_an)
+
+            probabilities = F.softmax(output, dim=1)
+            fake_prob = probabilities[0, 0].item()
+            # real_prob = probabilities[0, 1].item()
+
+        return fake_prob
 
 
 # if __name__ == "__main__":
