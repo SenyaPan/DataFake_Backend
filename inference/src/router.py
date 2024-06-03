@@ -1,15 +1,7 @@
-from io import BytesIO
-
-import torch
-
 from fastapi import APIRouter, UploadFile
 from typing import Union
-from pydantic import BaseModel
-from typing import List
-from PIL import Image
 
-from inference.photo_video.deepfake_model.model import PhotoInference
-
+from inference.src.config import inference_1, inference_5, inference_8, inf_logger
 
 router = APIRouter(
     prefix="/inference",
@@ -33,21 +25,18 @@ router = APIRouter(
 @router.post("/photo", summary="Analyze faces", response_description="JSON with results of every "
                                                                                          "face analysis")
 async def analyse_photo(uploaded_file: UploadFile, model_num: Union[int, None] = None):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if model_num == 1:
-        model_path = 'inference/photo_video/deepfake_model/resnet_focal_loss_v2.3_19.pth'
-    elif model_num == 5:
-        model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.2_5.pt'
-    elif model_num == 8:
-        model_path = 'inference/photo_video/deepfake_model/resnet_focal_loss_v2.2_1.pth'
-    else:
-        model_path = 'inference/photo_video/deepfake_model/resnet_detfake_v1.2_5.pt'
-    inference = PhotoInference(model_path, model_num if model_num else 5, device)
-
-    if model_num == 1:
-        fake_prob = inference.process_photo_without_photo_preprocessing(uploaded_file)
-    else:
-        fake_prob = inference.process_photo(uploaded_file)
+    try:
+        if model_num == 1:
+            fake_prob = inference_1.process_photo_without_photo_preprocessing(uploaded_file)
+        elif model_num == 5:
+            fake_prob = inference_5.process_photo(uploaded_file)
+        elif model_num == 8:
+            fake_prob = inference_8.process_photo(uploaded_file)
+        else:
+            fake_prob = inference_5.process_photo(uploaded_file)
+        inf_logger.info(f'Analysis of face {uploaded_file.filename} was successful.')
+    except:
+        inf_logger.exception(f'During the analysis of face {uploaded_file.filename} an error occurred.')
 
     return fake_prob
 

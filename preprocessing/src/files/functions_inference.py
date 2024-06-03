@@ -1,22 +1,19 @@
+import time
+
 import cv2
 import os
 import requests
 import shutil
-import time
 import onnxruntime as ort
-import numpy as np
 
 from tqdm import tqdm
 from typing import Union
 
-import torch
-
-from ultralytics import YOLO
-
 from PIL import Image
 
-from preprocessing.photo_video.func_img_proc.face_crop_2 import FaceExtractor
 from preprocessing.photo_video.face_vec.feature_vec import img2arr, cos_vec
+
+from preprocessing.src.config import pre_logger, face_extractor, ort_sess
 
 
 # def cut_faces(filename, frame=None):
@@ -49,34 +46,38 @@ from preprocessing.photo_video.face_vec.feature_vec import img2arr, cos_vec
 #     return faces_paths
 
 def cut_faces(filename, frame=None):
-    model_path = 'preprocessing/photo_video/func_img_proc/model.pt'
-    model = YOLO(model_path)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    model.to(device)
-    face_extractor = FaceExtractor(model)
-
     dir_for_save = ''.join(filename.split('/')[-1].split(".")[:-1])
 
     if not (os.path.isdir('preprocessing/media/' + dir_for_save)):
         os.mkdir('preprocessing/media/' + dir_for_save)
 
     if frame is not None:
-        boxes = face_extractor.process_file(frame)
+        try:
+            boxes = face_extractor.process_file(frame)
+            pre_logger.info(f'Frame from video {filename} has {len(boxes)} faces.')
+        except:
+            pre_logger.exception(f'During the face detecting in the video {filename} occurred an error.')
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         image = Image.fromarray(frame)
         dir_for_save += "/temp"
         if not os.path.isdir('preprocessing/media/' + dir_for_save):
             os.mkdir('preprocessing/media/' + dir_for_save)
     else:
-        boxes = face_extractor.process_file(filename)
+        try:
+            boxes = face_extractor.process_file(filename)
+            pre_logger.info(f'The image {filename} has {len(boxes)} faces.')
+        except:
+            pre_logger.exception(f'During the face detecting in the image {filename} occurred an error.')
         image = Image.open(filename)
 
     faces_paths = []
     for i in range(len(boxes)):
         im = image.crop((boxes[i][0], boxes[i][1], boxes[i][2], boxes[i][3]))
-        im.save('preprocessing/media/' + dir_for_save + f"/{i}.jpg")
+        try:
+            im.save('preprocessing/media/' + dir_for_save + f"/{i}.jpg")
+            pre_logger.info(f'Face {i}.jpg was successfully saved in {dir_for_save} folder.')
+        except:
+            pre_logger.exception(f'During the save process of face {i}.jpg in {dir_for_save} folder occurred an error.')
         faces_paths.append('preprocessing/media/' + dir_for_save + f"/{i}.jpg")
     return faces_paths
 
@@ -134,16 +135,14 @@ def calculate_features(image_path, model_session):
     img = img.resize((112, 112))
     # Преобразование изображения в массив данных
     arr_data = img2arr(img)
-    # Загрузка модели
-    ort_sess = model_session
     # Получение информации о входах модели
-    input_info = ort_sess.get_inputs()
+    input_info = model_session.get_inputs()
     # Подготовка данных для входа модели
     inputs = {}
     for inp in input_info:
         inputs[inp.name] = arr_data  # Преобразование массива данных в формат, понятный модели
     # Вычисление вектора признаков
-    output = ort_sess.run(None, inputs)[0][0]
+    output = model_session.run(None, inputs)[0][0]  # gets 2.8 seconds to be done
     return output
 
 
@@ -194,10 +193,6 @@ async def analyse_video(filename: str, model_num: Union[int, None]):
     #
     # result_audio = analyse_audio(audio_path)
 
-    model_path = 'preprocessing/photo_video/face_vec/vec_model.onnx'
-
-    ort_sess = get_ort_session(model_path)
-
     vidcap = cv2.VideoCapture(filename)
     result = {}
     vecs = []
@@ -215,6 +210,7 @@ async def analyse_video(filename: str, model_num: Union[int, None]):
                 frame_num += 1
                 pbar.update(1)
                 continue
+            pre_logger.info(f"#{frame_num} frame from video {filename} is analyzed.")
             # start_time = time.time()
             faces_paths = cut_faces(filename, frame)
             # end_time = time.time()
@@ -239,7 +235,12 @@ async def analyse_video(filename: str, model_num: Union[int, None]):
                     vecs.append(vec)
                     result[str(i)] = []
                     result[str(i)].append(model_results[i])
-                    shutil.move(face_path, ''.join(filename.split(".")[:-1]))
+                    move_to = ''.join(filename.split(".")[:-1])
+                    try:
+                        shutil.move(face_path, move_to)
+                        pre_logger.info(f'The face {i} moved successfully from {face_path} to {move_to}')
+                    except:
+                        pre_logger.exception(f'During moving {face_path} to {move_to} an error occurred.')
                 continue
 
             found_face_id = []
@@ -252,7 +253,12 @@ async def analyse_video(filename: str, model_num: Union[int, None]):
                     face_id = len(vecs)
                     vecs.append(face_vec)
                     result[str(face_id)] = []
-                    shutil.move(face_path, ''.join(filename.split(".")[:-1]) + f'/{face_id}.jpg')
+                    move_to = ''.join(filename.split(".")[:-1]) + f'/{face_id}.jpg'
+                    try:
+                        shutil.move(face_path, move_to)
+                        pre_logger.info(f'The face {i} moved successfully from {face_path} to {move_to}')
+                    except:
+                        pre_logger.exception(f'During moving {face_path} to {move_to} an error occurred.')
                     for _ in range(frame_num):
                         result[str(face_id)].append(None)
                 found_face_id.append(str(face_id))
@@ -263,8 +269,12 @@ async def analyse_video(filename: str, model_num: Union[int, None]):
                         result[face_id].append(None)
             frame_num += 1
             pbar.update(1)
-    shutil.rmtree(''.join(filename.split('.')[:-1]) + '/temp')
-    right_result = {'message': "File analyzed successfully", 'response': result}  # ,
-                    # 'dir_path': 'preprocessing/media/' + ''.join(filename.split('/')[-1].split(".")[:-1])}
+    rm_tree = ''.join(filename.split('.')[:-1]) + '/temp'
+    try:
+        shutil.rmtree(rm_tree)
+        pre_logger.info(f'The folder {rm_tree} removed successfully.')
+    except:
+        pre_logger.info(f'During removing the folder {rm_tree} an error occurred.')
+    right_result = {'message': "File analyzed successfully", 'response': result}
     # add to the result audio_result
     return right_result  # {"message": "Sorry, at this moment video analysis is not available :(", "response": {}}

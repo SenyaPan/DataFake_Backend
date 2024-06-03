@@ -31,3 +31,5 @@ __pycache__/
 /inference/photo_video/deepfake_model/resnet_focal_loss_v2.1_1.pth
 /inference/photo_video/deepfake_model/resnet_focal_loss_v2.2_1.pth
 /inference/photo_video/deepfake_model/resnet_focal_loss_v2.3_19.pth
+/logging/preprocessing.log
+/logging/inference.log

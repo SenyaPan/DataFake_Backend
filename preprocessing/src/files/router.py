@@ -14,6 +14,7 @@ from preprocessing.src.files.functions_preprocess import check_file, get_hash_md
 
 from preprocessing.src.files.functions_inference import analyse_photo, analyse_audio, analyse_video
 
+from preprocessing.src.config import pre_logger
 
 router = APIRouter(
     prefix="/files",
@@ -37,6 +38,7 @@ class Result(BaseModel):
     response: IDs
     dir_path: str
 
+
 # @router.get("/analyze")
 # def get_template(request: Request):
 #     return templates.TemplateResponse("upload.html", {"request": request})
@@ -58,15 +60,19 @@ async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = 
     try:
         with open(destination, "wb") as buffer:
             shutil.copyfileobj(uploaded_file.file, buffer)
+        pre_logger.info(f'File {file_path} have been uploaded successfully.')
+    except:
+        pre_logger.exception('There was some mistake during file upload.')
     finally:
         uploaded_file.file.close()
 
-    file_hash = get_hash_md5(destination)
-    if check_hash(file_hash):  # TODO check if hash is already in database
-        results = get_result(file_hash)
-        return results
+    # file_hash = get_hash_md5(destination)
+    # if check_hash(file_hash):  # TODO check if hash is already in database
+    #     results = get_result(file_hash)
+    #     return results
 
     if check_file(destination) == "image":
+        pre_logger.info(f'Uploaded file {file_path} is an image.')
         result = await analyse_photo(destination, model_num)
         if not result:
             result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}}
@@ -76,12 +82,17 @@ async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = 
                 result['path'] = file_path
             json_response = JSONResponse(status_code=200, content=result)
     elif check_file(destination) == "audio":
+        pre_logger.INFO(f'Uploaded file {file_path} is an audio.')
         result = analyse_audio(destination)  # idk what parameters there should be
         json_response = JSONResponse(content=result)
     elif check_file(destination) == "video":
+        pre_logger.info(f'Uploaded file {file_path} is a video.')
         result = await analyse_video(destination, model_num)
         if not result['response']:
             result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}}  # , 'dir_path': ''}
+        if not result:
+            result = {'message': 'File analyzed successfully, but haven`t found any faces',
+                      'response': {}}  # , 'dir_path': ''}
             json_response = JSONResponse(status_code=250, content=result)
         else:
             if return_path:
@@ -92,12 +103,13 @@ async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = 
         #     plt.plot(result['response'][str(key)])
         #     plt.savefig(''.join(destination.split('.')[:-1]) + '/' + str(key) + '.png')
     else:
+        pre_logger.info('The format of file is not supported.')
         result = {'data': {'message': 'Error! Wrong file type!', 'response': {}}}  # , 'dir_path': ''}}  #
         json_response = JSONResponse(status_code=415, content=result)
 
     # os.remove(destination)
     end_time = time.time()
-    print(end_time - start_time)
+    pre_logger.info(f'The analysis of file {file_path} took {end_time-start_time} seconds.')
 
     return json_response
 
@@ -105,6 +117,8 @@ async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = 
 @router.get('/{dir_name}/{file_name}')
 async def get_file(dir_name: str, file_name: str):
     if os.path.isfile(f'preprocessing/media/{dir_name}/{file_name}'):
+        pre_logger.info(f'The file {dir_name}/{file_name} was found.')
         return FileResponse(f'preprocessing/media/{dir_name}/{file_name}')
     else:
+        pre_logger.exception(f'The file {dir_name}/{file_name} was not found.')
         return Response(status_code=404)
