@@ -199,76 +199,76 @@ async def analyse_video(filename: str, model_num: Union[int, None]):
     frame_num = 0
     total_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    with tqdm(total=total_frames) as pbar:
-        while True:
-            ret, frame = vidcap.read()
+    # with tqdm(total=total_frames) as pbar:
+    while True:
+        ret, frame = vidcap.read()
 
-            if not ret:
-                break
+        if not ret:
+            break
 
-            if frame_num % 4 != 0:
-                frame_num += 1
-                pbar.update(1)
-                continue
-            pre_logger.info(f"#{frame_num} frame from video {filename} is analyzed.")
-            # start_time = time.time()
-            faces_paths = cut_faces(filename, frame)
-            # end_time = time.time()
-            # print("Cut faces time is ", end_time - start_time)
-
-            if not faces_paths:
-                for face_id in list(result.keys()):
-                    result[str(face_id)].append(None)
-                continue
-
-            model_results = {}
-            for i, face_path in enumerate(faces_paths):
-                with open(face_path, "rb") as f:
-                    model_results[i] = await call_photo_inference(f, model_num)
-
-            if not result.keys():
-                for i, face_path in enumerate(faces_paths):
-                    # start_time = time.time()
-                    vec = calculate_features(face_path, ort_sess)
-                    # end_time = time.time()
-                    # print("Count faces vecs time is ", end_time - start_time)
-                    vecs.append(vec)
-                    result[str(i)] = []
-                    result[str(i)].append(model_results[i])
-                    move_to = ''.join(filename.split(".")[:-1])
-                    try:
-                        shutil.move(face_path, move_to)
-                        pre_logger.info(f'The face {i} moved successfully from {face_path} to {move_to}')
-                    except:
-                        pre_logger.exception(f'During moving {face_path} to {move_to} an error occurred.')
-                continue
-
-            found_face_id = []
-            for i, face_path in enumerate(faces_paths):  # write properly
-                # start_time = time.time()
-                face_id, face_vec = compare_faces(vecs, face_path, ort_sess)
-                # end_time = time.time()
-                # print("Compare faces time is ", end_time - start_time)
-                if face_id == -1:
-                    face_id = len(vecs)
-                    vecs.append(face_vec)
-                    result[str(face_id)] = []
-                    move_to = ''.join(filename.split(".")[:-1]) + f'/{face_id}.jpg'
-                    try:
-                        shutil.move(face_path, move_to)
-                        pre_logger.info(f'The face {i} moved successfully from {face_path} to {move_to}')
-                    except:
-                        pre_logger.exception(f'During moving {face_path} to {move_to} an error occurred.')
-                    for _ in range(frame_num):
-                        result[str(face_id)].append(None)
-                found_face_id.append(str(face_id))
-                result[str(face_id)].append(model_results[i])
-            if set(found_face_id) != set(result.keys()):
-                for face_id in list(result.keys()):
-                    if face_id not in set(found_face_id):
-                        result[face_id].append(None)
+        if frame_num % 4 != 0:
             frame_num += 1
-            pbar.update(1)
+            # pbar.update(1)
+            continue
+        pre_logger.info(f"#{frame_num} frame from video {filename} is analyzed.")
+        # start_time = time.time()
+        faces_paths = cut_faces(filename, frame)
+        # end_time = time.time()
+        # print("Cut faces time is ", end_time - start_time)
+
+        if not faces_paths:
+            for face_id in list(result.keys()):
+                result[str(face_id)].append(None)
+            continue
+
+        model_results = {}
+        for i, face_path in enumerate(faces_paths):
+            with open(face_path, "rb") as f:
+                model_results[i] = await call_photo_inference(f, model_num)
+
+        if not result.keys():
+            for i, face_path in enumerate(faces_paths):
+                # start_time = time.time()
+                vec = calculate_features(face_path, ort_sess)
+                # end_time = time.time()
+                # print("Count faces vecs time is ", end_time - start_time)
+                vecs.append(vec)
+                result[str(i)] = []
+                result[str(i)].append(model_results[i])
+                move_to = ''.join(filename.split(".")[:-1])
+                try:
+                    shutil.move(face_path, move_to)
+                    pre_logger.info(f'The face {i} moved successfully from {face_path} to {move_to}')
+                except:
+                    pre_logger.exception(f'During moving {face_path} to {move_to} an error occurred.')
+            continue
+
+        found_face_id = []
+        for i, face_path in enumerate(faces_paths):  # write properly
+            # start_time = time.time()
+            face_id, face_vec = compare_faces(vecs, face_path, ort_sess)
+            # end_time = time.time()
+            # print("Compare faces time is ", end_time - start_time)
+            if face_id == -1:
+                face_id = len(vecs)
+                vecs.append(face_vec)
+                result[str(face_id)] = []
+                move_to = ''.join(filename.split(".")[:-1]) + f'/{face_id}.jpg'
+                try:
+                    shutil.move(face_path, move_to)
+                    pre_logger.info(f'The face {i} moved successfully from {face_path} to {move_to}')
+                except:
+                    pre_logger.exception(f'During moving {face_path} to {move_to} an error occurred.')
+                for _ in range(frame_num):
+                    result[str(face_id)].append(None)
+            found_face_id.append(str(face_id))
+            result[str(face_id)].append(model_results[i])
+        if set(found_face_id) != set(result.keys()):
+            for face_id in list(result.keys()):
+                if face_id not in set(found_face_id):
+                    result[face_id].append(None)
+        frame_num += 1
+        # pbar.update(1)
     rm_tree = ''.join(filename.split('.')[:-1]) + '/temp'
     try:
         shutil.rmtree(rm_tree)
