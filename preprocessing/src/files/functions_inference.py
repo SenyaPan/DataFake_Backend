@@ -45,7 +45,7 @@ from preprocessing.src.config import pre_logger, face_extractor, ort_sess
 #
 #     return faces_paths
 
-def cut_faces(filename, frame=None):
+async def cut_faces(filename, frame=None):
     dir_for_save = ''.join(filename.split('/')[-1].split(".")[:-1])
 
     if not (os.path.isdir('preprocessing/media/' + dir_for_save)):
@@ -83,7 +83,7 @@ def cut_faces(filename, frame=None):
 
 
 async def analyse_photo(filename, model_num: Union[int, None]):
-    faces_paths = cut_faces(filename)
+    faces_paths = await cut_faces(filename)
 
     results = {}
     for i, face_path in enumerate(faces_paths):
@@ -129,7 +129,7 @@ def analyse_audio(filename: str, sec: int = 1):
     return {"message": "Sorry, at this moment audio analysis is not available :(", "response": {}}
 
 
-def calculate_features(image_path, model_session):
+async def calculate_features(image_path, model_session):
     # Загрузка изображения
     img = Image.open(image_path)
     img = img.resize((112, 112))
@@ -146,8 +146,8 @@ def calculate_features(image_path, model_session):
     return output
 
 
-def compare_faces(existing_vec: list, face_path_to_compare: str, model_session):
-    output = calculate_features(face_path_to_compare, model_session)
+async def compare_faces(existing_vec: list, face_path_to_compare: str, model_session):
+    output = await calculate_features(face_path_to_compare, model_session)
 
     best_id = -1
     best_vec = []
@@ -212,7 +212,7 @@ async def analyse_video(filename: str, model_num: Union[int, None]):
             continue
         pre_logger.info(f"#{frame_num} frame from video {filename} is analyzed.")
         # start_time = time.time()
-        faces_paths = cut_faces(filename, frame)
+        faces_paths = await cut_faces(filename, frame)
         # end_time = time.time()
         # print("Cut faces time is ", end_time - start_time)
 
@@ -229,7 +229,7 @@ async def analyse_video(filename: str, model_num: Union[int, None]):
         if not result.keys():
             for i, face_path in enumerate(faces_paths):
                 # start_time = time.time()
-                vec = calculate_features(face_path, ort_sess)
+                vec = await calculate_features(face_path, ort_sess)
                 # end_time = time.time()
                 # print("Count faces vecs time is ", end_time - start_time)
                 vecs.append(vec)
@@ -246,7 +246,7 @@ async def analyse_video(filename: str, model_num: Union[int, None]):
         found_face_id = []
         for i, face_path in enumerate(faces_paths):  # write properly
             # start_time = time.time()
-            face_id, face_vec = compare_faces(vecs, face_path, ort_sess)
+            face_id, face_vec = await compare_faces(vecs, face_path, ort_sess)
             # end_time = time.time()
             # print("Compare faces time is ", end_time - start_time)
             if face_id == -1:
