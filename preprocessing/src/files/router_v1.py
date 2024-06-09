@@ -17,7 +17,7 @@ from preprocessing.src.files.functions_inference import analyse_photo, analyse_a
 from preprocessing.src.config import pre_logger
 
 router = APIRouter(
-    prefix="/files",
+    prefix="/v1/files",
     tags=["Files"]
 )
 

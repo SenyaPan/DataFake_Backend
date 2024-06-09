@@ -1,17 +1,19 @@
 from fastapi import FastAPI, Depends
 
-# from preprocessing.src.operations.router import router as router_operation
-from preprocessing.src.files.router import router as router_files
+from preprocessing.src.files.router_v1 import router as router_v1
+from preprocessing.src.files.router_v2 import router as router_v2
 
 app = FastAPI(
     title="Preprocessing",
     description="This API allows you to upload a file to our service and get the results of it's analysis.",
     summary="API of main microservice for the DatAFake work.",
     version="1.0",
-    root_path="/api/v1"
+    root_path="/api"
 )
 
-app.include_router(router_files)
+app.include_router(router_v1)
+app.include_router(router_v2)
+
 
 # app.include_router(router_operation)
 
