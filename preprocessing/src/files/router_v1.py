@@ -74,7 +74,7 @@ async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = 
     if check_file(destination) == "image":
         pre_logger.info(f'Uploaded file {file_path} is an image.')
         result = await analyse_photo(destination, model_num)
-        if not result:
+        if not result['response']:
             result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}}
             json_response = JSONResponse(status_code=250, content=result)
         else:
@@ -89,10 +89,7 @@ async def analyze_file(uploaded_file: UploadFile, model_num: Union[int, None] = 
         pre_logger.info(f'Uploaded file {file_path} is a video.')
         result = await analyse_video(destination, model_num)
         if not result['response']:
-            result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}}  # , 'dir_path': ''}
-        if not result:
-            result = {'message': 'File analyzed successfully, but haven`t found any faces',
-                      'response': {}}  # , 'dir_path': ''}
+            result = {'message': 'File analyzed successfully, but haven`t found any faces', 'response': {}}
             json_response = JSONResponse(status_code=250, content=result)
         else:
             if return_path:

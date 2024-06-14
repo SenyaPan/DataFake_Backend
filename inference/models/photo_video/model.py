@@ -3,14 +3,14 @@ import torchvision.transforms as transforms
 import torch.nn.functional as F
 from PIL import Image
 
-from inference.photo_video.deepfake_model.functions_for_model_arc_6 import noise_proc, fft_proc
-from inference.photo_video.deepfake_model.model_arc_4 import ResNet18
+from inference.models.photo_video.functions_for_model_arc_6 import noise_proc, fft_proc
+from inference.models.photo_video.model_arc_4 import ResNet18
 
-from inference.photo_video.deepfake_model.model_arc_5 import ParallelResNet
-from inference.photo_video.deepfake_model.model_arc_5 import block
+from inference.models.photo_video.model_arc_5 import ParallelResNet
+from inference.models.photo_video.model_arc_5 import block
 
-from inference.photo_video.deepfake_model.model_arc_6 import ParallelResNet as ParallelResNet2
-from inference.photo_video.deepfake_model.model_arc_6 import Block
+from inference.models.photo_video.model_arc_6 import ParallelResNet as ParallelResNet2
+from inference.models.photo_video.model_arc_6 import Block
 
 
 class PhotoInference:

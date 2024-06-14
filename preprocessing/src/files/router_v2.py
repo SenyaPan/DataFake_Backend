@@ -111,7 +111,7 @@ async def analyze_video(uploaded_file: UploadFile, model_num: Union[int, None] =
         #     plt.plot(result['response'][str(key)])
         #     plt.savefig(''.join(destination.split('.')[:-1]) + '/' + str(key) + '.png')
     else:
-        pre_logger.info('The format of file is not image.')
+        pre_logger.info('The format of file is not video.')
         result = {'data': {'message': 'Error! Wrong file type!', 'response': {}}}
         json_response = JSONResponse(status_code=415, content=result)
 
@@ -148,11 +148,12 @@ async def analyze_audio(uploaded_file: UploadFile, model_num: Union[int, None] =
     #     return results
 
     if check_file(destination) == "audio":
-        pre_logger.INFO(f'Uploaded file {file_path} is an audio.')
-        result = analyse_audio(destination)  # idk what parameters there should be
-        json_response = JSONResponse(content=result)
+        pre_logger.info(f'Uploaded file {file_path} is an audio.')
+        result = await analyse_audio(destination)  # idk what parameters there should be
+        response = {'message': 'File analyzed successfully!', 'response': result}
+        json_response = JSONResponse(content=response)
     else:
-        pre_logger.info('The format of file is not image.')
+        pre_logger.info('The format of file is not audio.')
         result = {'data': {'message': 'Error! Wrong file type!', 'response': {}}}
         json_response = JSONResponse(status_code=415, content=result)
 

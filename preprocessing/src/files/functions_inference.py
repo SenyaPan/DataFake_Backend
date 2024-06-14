@@ -1,4 +1,5 @@
 import time
+from io import BytesIO
 
 import cv2
 import os
@@ -14,11 +15,12 @@ from PIL import Image
 from preprocessing.photo_video.face_vec.feature_vec import img2arr, cos_vec
 
 from preprocessing.src.config import pre_logger, face_extractor, ort_sess
+from preprocessing.src.files.functions_audio import devide, create_spectrogram
 
 
 # def cut_faces(filename, frame=None):
-#     net = cv2.dnn.readNetFromCaffe('preprocessing/photo_video/func_img_proc/deploy.prototxt',
-#                                    'preprocessing/photo_video/func_img_proc/weights.caffemodel')
+#     net = cv2.dnn.readNetFromCaffe('preprocessing/models/func_img_proc/deploy.prototxt',
+#                                    'preprocessing/models/func_img_proc/weights.caffemodel')
 #     face_extractor = FaceExtractor(net)
 #
 #     if frame is None:
@@ -116,17 +118,26 @@ async def call_photo_inference(file, model_num: Union[int, None]):
 
 async def call_audio_inference(data):
     url = "http://localhost:5050/api/v1/inference/audio"
-    response = requests.post(url, json=data)
+    response = requests.post(url, files={'uploaded_file': data})
 
     if response.status_code == 200:
-        return {"message": "File analyzed successfully", "response": response.json()}
+        return response.json()
     else:
         return {"message": "Error sending request", "response": {}}
 
 
-def analyse_audio(filename: str, sec: int = 1):
+async def analyse_audio(filename: str, sec: int = 1):
+    audio_arr = devide(filename)
+    result = []
+    for sample in audio_arr:
+        image = create_spectrogram(sample)
+        img_byte_arr = BytesIO()
+        image.save(img_byte_arr, format='PNG')
+        img_byte_arr = img_byte_arr.getvalue()
 
-    return {"message": "Sorry, at this moment audio analysis is not available :(", "response": {}}
+        response = await call_audio_inference(img_byte_arr)
+        result.append(response)
+    return result
 
 
 async def calculate_features(image_path, model_session):
