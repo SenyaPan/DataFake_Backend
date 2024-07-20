@@ -23,9 +23,6 @@
 
 Вы преодолели первый этап и хотите большего? Тогда предлагаю запустить наше API! Для этого откройте два терминала в той IDE, где вы работаете, и напишите следующие заклинания:
 
-~~- в первом: uvicorn preprocessing.src.main:app --port 5000
-- во втором: uvicorn inference.src.main:app --port 5050~~
-
 С учетом логов сервис запускается по-другому:
 
 - uvicorn preprocessing.src.main:app --port 5000 --log-config logging/preprocessing_logging.conf --workers 4
